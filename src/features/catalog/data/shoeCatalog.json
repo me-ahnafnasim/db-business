@@ -1,0 +1,374 @@
+{
+  "categories": [
+    {
+      "id": "running-shoes",
+      "name": "Running Shoes",
+      "description": "Lightweight pairs for daily runs and repeat orders.",
+      "products": [
+        {
+          "id": "run-001",
+          "featuredRank": 1,
+          "name": "Velocity Sprint",
+          "sku": "RUN-001",
+          "price": 129,
+          "moq": 6,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/1f2937/ffffff.png&text=Running+Shoe+1"
+        },
+        {
+          "id": "run-002",
+          "featuredRank": 7,
+          "name": "Pace Runner Pro",
+          "sku": "RUN-002",
+          "price": 139,
+          "moq": 8,
+          "isNew": false,
+          "image": "https://dummyimage.com/600x420/334155/ffffff.png&text=Running+Shoe+2"
+        },
+        {
+          "id": "run-003",
+          "featuredRank": 13,
+          "name": "Aero Flex Ride",
+          "sku": "RUN-003",
+          "price": 119,
+          "moq": 10,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/475569/ffffff.png&text=Running+Shoe+3"
+        }
+      ]
+    },
+    {
+      "id": "sneakers",
+      "name": "Sneakers",
+      "description": "Everyday lifestyle shoes with broad appeal.",
+      "products": [
+        {
+          "id": "snk-001",
+          "featuredRank": 2,
+          "name": "Street Ease One",
+          "sku": "SNK-001",
+          "price": 99,
+          "moq": 12,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/7c2d12/ffffff.png&text=Sneaker+1"
+        },
+        {
+          "id": "snk-002",
+          "featuredRank": 8,
+          "name": "Metro Classic",
+          "sku": "SNK-002",
+          "price": 109,
+          "moq": 10,
+          "isNew": false,
+          "image": "https://dummyimage.com/600x420/9a3412/ffffff.png&text=Sneaker+2"
+        },
+        {
+          "id": "snk-003",
+          "featuredRank": 14,
+          "name": "Urban Canvas",
+          "sku": "SNK-003",
+          "price": 89,
+          "moq": 14,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/c2410c/ffffff.png&text=Sneaker+3"
+        }
+      ]
+    },
+    {
+      "id": "basketball-shoes",
+      "name": "Basketball Shoes",
+      "description": "High-grip court shoes for athletic programs.",
+      "products": [
+        {
+          "id": "bb-001",
+          "featuredRank": 3,
+          "name": "Court Elevate",
+          "sku": "BKB-001",
+          "price": 149,
+          "moq": 6,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/7f1d1d/ffffff.png&text=Basketball+1"
+        },
+        {
+          "id": "bb-002",
+          "featuredRank": 9,
+          "name": "Hoop Drive Max",
+          "sku": "BKB-002",
+          "price": 159,
+          "moq": 5,
+          "isNew": false,
+          "image": "https://dummyimage.com/600x420/991b1b/ffffff.png&text=Basketball+2"
+        },
+        {
+          "id": "bb-003",
+          "featuredRank": 15,
+          "name": "Air Pivot Elite",
+          "sku": "BKB-003",
+          "price": 169,
+          "moq": 4,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/b91c1c/ffffff.png&text=Basketball+3"
+        }
+      ]
+    },
+    {
+      "id": "hiking-shoes",
+      "name": "Hiking Shoes",
+      "description": "Durable outdoor pairs for rough terrain.",
+      "products": [
+        {
+          "id": "hik-001",
+          "featuredRank": 4,
+          "name": "Trail Ridge",
+          "sku": "HIK-001",
+          "price": 145,
+          "moq": 7,
+          "isNew": false,
+          "image": "https://dummyimage.com/600x420/14532d/ffffff.png&text=Hiking+1"
+        },
+        {
+          "id": "hik-002",
+          "featuredRank": 10,
+          "name": "Peak Trekker",
+          "sku": "HIK-002",
+          "price": 155,
+          "moq": 6,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/166534/ffffff.png&text=Hiking+2"
+        },
+        {
+          "id": "hik-003",
+          "featuredRank": 16,
+          "name": "Summit Guard",
+          "sku": "HIK-003",
+          "price": 165,
+          "moq": 5,
+          "isNew": false,
+          "image": "https://dummyimage.com/600x420/15803d/ffffff.png&text=Hiking+3"
+        }
+      ]
+    },
+    {
+      "id": "loafers",
+      "name": "Loafers",
+      "description": "Comfort-forward casual pairs for repeat buyers.",
+      "products": [
+        {
+          "id": "lof-001",
+          "featuredRank": 5,
+          "name": "Soft Step Penny",
+          "sku": "LOF-001",
+          "price": 119,
+          "moq": 10,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/78350f/ffffff.png&text=Loafer+1"
+        },
+        {
+          "id": "lof-002",
+          "featuredRank": 11,
+          "name": "City Lounge",
+          "sku": "LOF-002",
+          "price": 124,
+          "moq": 9,
+          "isNew": false,
+          "image": "https://dummyimage.com/600x420/92400e/ffffff.png&text=Loafer+2"
+        },
+        {
+          "id": "lof-003",
+          "featuredRank": 17,
+          "name": "Daylight Slip",
+          "sku": "LOF-003",
+          "price": 114,
+          "moq": 12,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/b45309/ffffff.png&text=Loafer+3"
+        }
+      ]
+    },
+    {
+      "id": "formal-shoes",
+      "name": "Formal Shoes",
+      "description": "Office-ready leather styles for business orders.",
+      "products": [
+        {
+          "id": "frm-001",
+          "featuredRank": 6,
+          "name": "Oxford Prime",
+          "sku": "FOR-001",
+          "price": 159,
+          "moq": 6,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/111827/ffffff.png&text=Formal+1"
+        },
+        {
+          "id": "frm-002",
+          "featuredRank": 12,
+          "name": "Executive Lace",
+          "sku": "FOR-002",
+          "price": 169,
+          "moq": 5,
+          "isNew": false,
+          "image": "https://dummyimage.com/600x420/1f2937/ffffff.png&text=Formal+2"
+        },
+        {
+          "id": "frm-003",
+          "featuredRank": 18,
+          "name": "Boardroom Derby",
+          "sku": "FOR-003",
+          "price": 149,
+          "moq": 8,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/374151/ffffff.png&text=Formal+3"
+        }
+      ]
+    },
+    {
+      "id": "sandals",
+      "name": "Sandals",
+      "description": "Warm-weather styles for high-volume seasonal demand.",
+      "products": [
+        {
+          "id": "sdl-001",
+          "featuredRank": 19,
+          "name": "Coast Slide",
+          "sku": "SAN-001",
+          "price": 59,
+          "moq": 16,
+          "isNew": false,
+          "image": "https://dummyimage.com/600x420/0f766e/ffffff.png&text=Sandal+1"
+        },
+        {
+          "id": "sdl-002",
+          "featuredRank": 20,
+          "name": "Breeze Strap",
+          "sku": "SAN-002",
+          "price": 69,
+          "moq": 14,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/0f766e/ffffff.png&text=Sandal+2"
+        },
+        {
+          "id": "sdl-003",
+          "featuredRank": 21,
+          "name": "Summer Walk",
+          "sku": "SAN-003",
+          "price": 64,
+          "moq": 18,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/115e59/ffffff.png&text=Sandal+3"
+        }
+      ]
+    },
+    {
+      "id": "slip-ons",
+      "name": "Slip-Ons",
+      "description": "Quick-wear styles for convenience-focused buyers.",
+      "products": [
+        {
+          "id": "slp-001",
+          "featuredRank": 22,
+          "name": "Easy Move",
+          "sku": "SLP-001",
+          "price": 79,
+          "moq": 12,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/4c1d95/ffffff.png&text=Slip-On+1"
+        },
+        {
+          "id": "slp-002",
+          "featuredRank": 23,
+          "name": "Daily Slide Knit",
+          "sku": "SLP-002",
+          "price": 85,
+          "moq": 11,
+          "isNew": false,
+          "image": "https://dummyimage.com/600x420/5b21b6/ffffff.png&text=Slip-On+2"
+        },
+        {
+          "id": "slp-003",
+          "featuredRank": 24,
+          "name": "Flex Glide",
+          "sku": "SLP-003",
+          "price": 83,
+          "moq": 9,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/6d28d9/ffffff.png&text=Slip-On+3"
+        }
+      ]
+    },
+    {
+      "id": "boots",
+      "name": "Boots",
+      "description": "Structured boots for rugged and premium assortments.",
+      "products": [
+        {
+          "id": "bot-001",
+          "featuredRank": 25,
+          "name": "Ranger High",
+          "sku": "BOT-001",
+          "price": 179,
+          "moq": 5,
+          "isNew": false,
+          "image": "https://dummyimage.com/600x420/3f3f46/ffffff.png&text=Boot+1"
+        },
+        {
+          "id": "bot-002",
+          "featuredRank": 26,
+          "name": "Storm Walker",
+          "sku": "BOT-002",
+          "price": 189,
+          "moq": 4,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/52525b/ffffff.png&text=Boot+2"
+        },
+        {
+          "id": "bot-003",
+          "featuredRank": 27,
+          "name": "Terrain Guard",
+          "sku": "BOT-003",
+          "price": 195,
+          "moq": 6,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/71717a/ffffff.png&text=Boot+3"
+        }
+      ]
+    },
+    {
+      "id": "training-shoes",
+      "name": "Training Shoes",
+      "description": "Gym and cross-training pairs for broad fitness demand.",
+      "products": [
+        {
+          "id": "trn-001",
+          "featuredRank": 28,
+          "name": "Core Lift",
+          "sku": "TRN-001",
+          "price": 129,
+          "moq": 8,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/1d4ed8/ffffff.png&text=Training+1"
+        },
+        {
+          "id": "trn-002",
+          "featuredRank": 29,
+          "name": "Studio Motion",
+          "sku": "TRN-002",
+          "price": 122,
+          "moq": 7,
+          "isNew": false,
+          "image": "https://dummyimage.com/600x420/2563eb/ffffff.png&text=Training+2"
+        },
+        {
+          "id": "trn-003",
+          "featuredRank": 30,
+          "name": "Power Circuit",
+          "sku": "TRN-003",
+          "price": 134,
+          "moq": 6,
+          "isNew": true,
+          "image": "https://dummyimage.com/600x420/3b82f6/ffffff.png&text=Training+3"
+        }
+      ]
+    }
+  ]
+}
