@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { FlatList, StyleSheet, Text, TextInput, View } from "react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ScreenShell from "../components/ScreenShell";
 import CatalogProductCard from "../features/catalog/components/CatalogProductCard";
@@ -15,14 +15,19 @@ export default function SearchScreen({
   onSearchPress,
   onCartPress,
   catalog,
-  onAddToCart,
+  onOpenProduct,
   cartCount,
+  auth,
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const [query, setQuery] = useState("");
   const inputRef = useRef(null);
   const results = useMemo(() => getFilteredProducts(catalog.categories, query), [catalog.categories, query]);
+  const renderProduct = useCallback(
+    ({ item }) => <CatalogProductCard product={item} compact onOpenProduct={onOpenProduct} />,
+    [onOpenProduct]
+  );
 
   useEffect(() => {
     if (activeTab !== TAB_KEYS.SEARCH) {
@@ -44,6 +49,7 @@ export default function SearchScreen({
       onSearchPress={onSearchPress}
       onCartPress={onCartPress}
       cartCount={cartCount}
+      auth={auth}
       title="Search"
       subtitle="Search by name, SKU, or category"
       scrollable={false}
@@ -67,8 +73,12 @@ export default function SearchScreen({
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => <CatalogProductCard product={item} compact onAddToCart={onAddToCart} />}
+          renderItem={renderProduct}
           ListEmptyComponent={<Text style={styles.emptyText}>No products match your search.</Text>}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews
         />
       </View>
     </ScreenShell>
@@ -77,42 +87,42 @@ export default function SearchScreen({
 
 const getStyles = (colors) =>
   StyleSheet.create({
-  content: {
-    flex: 1,
-  },
-  searchBox: {
-    backgroundColor: colors.surface,
-    borderRadius: 22,
-    marginHorizontal: 20,
-    marginBottom: 14,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  input: {
-    flex: 1,
-    color: colors.textPrimary,
-    fontSize: 17,
-  },
-  resultText: {
-    color: colors.textSecondary,
-    fontSize: 15,
-    marginHorizontal: 20,
-    marginBottom: 10,
-  },
-  list: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-  },
-  row: {
-    justifyContent: "space-between",
-  },
-  emptyText: {
-    color: colors.textSecondary,
-    textAlign: "center",
-    marginTop: 40,
-    fontSize: 16,
-  },
+    content: {
+      flex: 1,
+    },
+    searchBox: {
+      backgroundColor: colors.surface,
+      borderRadius: 22,
+      marginHorizontal: 20,
+      marginBottom: 14,
+      paddingHorizontal: 18,
+      paddingVertical: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
+    input: {
+      flex: 1,
+      color: colors.textPrimary,
+      fontSize: 17,
+    },
+    resultText: {
+      color: colors.textSecondary,
+      fontSize: 15,
+      marginHorizontal: 20,
+      marginBottom: 10,
+    },
+    list: {
+      paddingHorizontal: 20,
+      paddingBottom: 24,
+    },
+    row: {
+      justifyContent: "space-between",
+    },
+    emptyText: {
+      color: colors.textSecondary,
+      textAlign: "center",
+      marginTop: 40,
+      fontSize: 16,
+    },
   });

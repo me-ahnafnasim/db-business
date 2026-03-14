@@ -1,11 +1,14 @@
 import { Feather } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 
+import { getTimeGreeting } from "../../shared/utils/timeGreeting";
 import { useTheme } from "../../../theme/ThemeProvider";
 
-export default function ProfileWelcomeCard() {
+export default function ProfileWelcomeCard({ auth }) {
   const { colors, isDarkMode } = useTheme();
   const styles = getStyles(colors, isDarkMode);
+  const title = auth?.isSignedIn ? `Welcome, ${auth.displayName}` : "Welcome";
+  const subtitle = auth?.isSignedIn ? `${getTimeGreeting()} — account ready` : "Sign in to continue";
 
   return (
     <View style={styles.card}>
@@ -13,8 +16,8 @@ export default function ProfileWelcomeCard() {
         <Feather name="user" size={28} color={colors.black} />
       </View>
       <View style={styles.textWrap}>
-        <Text style={styles.title}>Welcome</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
     </View>
   );

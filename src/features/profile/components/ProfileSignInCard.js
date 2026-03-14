@@ -2,22 +2,42 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "../../../theme/ThemeProvider";
 
-export default function ProfileSignInCard() {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+export default function ProfileSignInCard({ auth, onPress, onSignOut, onAdminPress }) {
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
+  const isSignedIn = auth?.isSignedIn;
+  const isAdmin = auth?.role === "admin";
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Sign in to access</Text>
-      <Text style={styles.subtitle}>Sign in to access all features</Text>
-      <Pressable style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}>
-        <Text style={styles.buttonText}>Sign In</Text>
-      </Pressable>
+      <Text style={styles.title}>{isSignedIn ? "Signed in" : "Sign in to access"}</Text>
+      <Text style={styles.subtitle}>
+        {isSignedIn ? `${auth.displayName} · ${auth.email}` : "Sign in to access all features"}
+      </Text>
+      {isSignedIn ? (
+        <View style={styles.actions}>
+          {isAdmin ? (
+            <Pressable style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]} onPress={onAdminPress}>
+              <Text style={styles.buttonText}>Open Admin Panel</Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed, isAdmin && styles.secondaryButton]}
+            onPress={onSignOut}
+          >
+            <Text style={[styles.buttonText, isAdmin && styles.secondaryButtonText]}>{isAdmin ? "Sign Out" : "Logout"}</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]} onPress={onPress}>
+          <Text style={styles.buttonText}>Sign In</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = (colors, isDarkMode) =>
   StyleSheet.create({
     card: {
       backgroundColor: colors.surface,
@@ -54,5 +74,15 @@ const getStyles = (colors) =>
       color: colors.black,
       fontSize: 18,
       fontWeight: "700",
+    },
+    actions: {
+      alignSelf: "stretch",
+      gap: 10,
+    },
+    secondaryButton: {
+      backgroundColor: colors.surfaceSoft,
+    },
+    secondaryButtonText: {
+      color: isDarkMode ? colors.white : colors.textPrimary,
     },
   });

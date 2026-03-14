@@ -3,8 +3,8 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTheme } from "../../../theme/ThemeProvider";
 
 export default function MoqModal({ product, visible, onClose, onConfirm }) {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { colors, isDarkMode } = useTheme();
+  const styles = getStyles(colors, isDarkMode);
 
   if (!product) {
     return null;
@@ -33,7 +33,7 @@ export default function MoqModal({ product, visible, onClose, onConfirm }) {
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = (colors, isDarkMode) =>
   StyleSheet.create({
     overlay: {
       flex: 1,
@@ -82,7 +82,7 @@ const getStyles = (colors) =>
       backgroundColor: colors.tabActive,
     },
     primaryText: {
-      color: colors.white,
+      color: isDarkMode ? colors.black : colors.white,
       fontWeight: "700",
     },
   });

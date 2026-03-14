@@ -1,5 +1,5 @@
 import { FlatList, StyleSheet, Text, View } from "react-native";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import ScreenShell from "../components/ScreenShell";
 import CategoryFilterBar from "../features/catalog/components/CategoryFilterBar";
@@ -18,8 +18,9 @@ export default function CategoriesScreen({
   catalog,
   selectedCategoryId,
   onSelectCategory,
-  onAddToCart,
+  onOpenProduct,
   cartCount,
+  auth,
 }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
@@ -42,6 +43,11 @@ export default function CategoriesScreen({
 
     setVisibleCount((currentCount) => currentCount + PAGE_SIZE);
   };
+  const renderProduct = useCallback(
+    ({ item }) => <CatalogProductCard product={item} compact onOpenProduct={onOpenProduct} />,
+    [onOpenProduct]
+  );
+  const footer = products.length > visibleCount ? <Text style={styles.footerText}>Loading more products...</Text> : null;
 
   return (
     <ScreenShell
@@ -51,6 +57,7 @@ export default function CategoriesScreen({
       onSearchPress={onSearchPress}
       onCartPress={onCartPress}
       cartCount={cartCount}
+      auth={auth}
       title={selectedCategory ? selectedCategory.name : "All Shoe Categories"}
       subtitle={
         selectedCategory
@@ -71,13 +78,15 @@ export default function CategoriesScreen({
           numColumns={2}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => <CatalogProductCard product={item} compact onAddToCart={onAddToCart} />}
+          renderItem={renderProduct}
           ListEmptyComponent={<Text style={styles.emptyText}>No products found.</Text>}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.4}
-          ListFooterComponent={
-            products.length > visibleCount ? <Text style={styles.footerText}>Loading more products...</Text> : null
-          }
+          ListFooterComponent={footer}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          removeClippedSubviews
         />
       </View>
     </ScreenShell>

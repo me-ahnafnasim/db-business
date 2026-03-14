@@ -4,7 +4,7 @@ import { useTheme } from "../../../theme/ThemeProvider";
 import CatalogProductCard from "./CatalogProductCard";
 import CatalogSectionHeader from "./CatalogSectionHeader";
 
-export default function CategoryPreviewSection({ category, onViewAll, onAddToCart }) {
+export default function CategoryPreviewSection({ category, onViewAll, onOpenProduct }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
 
@@ -17,7 +17,7 @@ export default function CategoryPreviewSection({ category, onViewAll, onAddToCar
           <CatalogProductCard
             key={product.id}
             product={{ ...product, categoryName: category.name }}
-            onAddToCart={onAddToCart}
+            onOpenProduct={onOpenProduct}
           />
         ))}
       </ScrollView>

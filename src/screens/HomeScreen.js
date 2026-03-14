@@ -20,8 +20,9 @@ export default function HomeScreen({
   onCartPress,
   catalog,
   onViewCategory,
-  onAddToCart,
+  onOpenProduct,
   cartCount,
+  auth,
 }) {
   const { colors, isDarkMode } = useTheme();
   const styles = getStyles(colors);
@@ -46,6 +47,7 @@ export default function HomeScreen({
           onSearchPress={onSearchPress}
           onCartPress={onCartPress}
           cartCount={cartCount}
+          auth={auth}
         />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -59,14 +61,14 @@ export default function HomeScreen({
                   product={product}
                   compact
                   featured
-                  onAddToCart={onAddToCart}
+                  onOpenProduct={onOpenProduct}
                 />
               ))}
             </View>
             <CatalogSectionHeader title="Popular Right Now" actionLabel="" />
             <View style={styles.grid}>
               {moreProducts.map((product) => (
-                <CatalogProductCard key={product.id} product={product} compact onAddToCart={onAddToCart} />
+                <CatalogProductCard key={product.id} product={product} compact onOpenProduct={onOpenProduct} />
               ))}
             </View>
           </View>
@@ -80,29 +82,29 @@ export default function HomeScreen({
 
 const getStyles = (colors) =>
   StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    paddingBottom: 18,
-  },
-  featuredSection: {
-    paddingHorizontal: 20,
-    marginTop: 24,
-  },
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 22,
-  },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.surface,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      paddingBottom: 18,
+    },
+    featuredSection: {
+      paddingHorizontal: 20,
+      marginTop: 24,
+    },
+    topRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 22,
+    },
+    grid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+    },
   });

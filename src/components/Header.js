@@ -1,13 +1,15 @@
 import { Feather, Ionicons, SimpleLineIcons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import profile from "../data/profile";
+import { getTimeGreeting } from "../features/shared/utils/timeGreeting";
 import { useTheme } from "../theme/ThemeProvider";
 
-export default function Header({ onProfilePress, onSearchPress, onCartPress, cartCount = 0 }) {
+export default function Header({ onProfilePress, onSearchPress, onCartPress, cartCount = 0, auth }) {
   const { colors } = useTheme();
   const styles = getStyles(colors);
-  const avatarText = profile.name?.trim()?.charAt(0)?.toUpperCase() || "?";
+  const displayName = auth?.isSignedIn ? auth.displayName : "Guest User";
+  const avatarText = displayName?.trim()?.charAt(0)?.toUpperCase() || "?";
+  const greeting = `${getTimeGreeting()}👋`;
 
   return (
     <View style={styles.container}>
@@ -16,9 +18,9 @@ export default function Header({ onProfilePress, onSearchPress, onCartPress, car
           <Text style={styles.logoText}>{avatarText}</Text>
         </View>
         <View>
-          <Text style={styles.greeting}>{profile.greeting}</Text>
+          <Text style={styles.greeting}>{greeting}</Text>
           <Text numberOfLines={1} style={styles.storeName}>
-            {profile.name}
+            {displayName}
           </Text>
         </View>
       </Pressable>

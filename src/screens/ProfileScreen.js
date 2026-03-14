@@ -11,7 +11,15 @@ import ProfileWelcomeCard from "../features/profile/components/ProfileWelcomeCar
 import { settingsItems, supportItems } from "../features/profile/data/profileMenu";
 import { useTheme } from "../theme/ThemeProvider";
 
-export default function ProfileScreen({ activeTab, onTabPress, cartCount }) {
+export default function ProfileScreen({
+  activeTab,
+  onTabPress,
+  cartCount,
+  auth,
+  onSignInPress,
+  onSignOut,
+  onAdminPress,
+}) {
   const { colors, isDarkMode, toggleTheme } = useTheme();
   const styles = getStyles(colors);
 
@@ -19,8 +27,13 @@ export default function ProfileScreen({ activeTab, onTabPress, cartCount }) {
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <ProfileWelcomeCard />
-          <ProfileSignInCard />
+          <ProfileWelcomeCard auth={auth} />
+          <ProfileSignInCard
+            auth={auth}
+            onPress={onSignInPress}
+            onSignOut={onSignOut}
+            onAdminPress={onAdminPress}
+          />
           <ProfileSingleRowCard />
           <ProfileSectionTag label="Support" />
           <ProfileListCard items={supportItems} />

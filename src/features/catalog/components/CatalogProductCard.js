@@ -1,17 +1,20 @@
+import { memo } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "../../../theme/ThemeProvider";
 
-export default function CatalogProductCard({ product, onAddToCart, compact = false, featured = false }) {
+function CatalogProductCard({ product, onOpenProduct, compact = false, featured = false }) {
   const { colors, isDarkMode } = useTheme();
   const styles = getStyles(colors, isDarkMode);
 
   return (
     <View style={[styles.card, compact && styles.compactCard, featured && styles.featuredCard]}>
-      <Image
-        source={{ uri: product.image }}
-        style={[styles.image, compact && styles.compactImage, featured && styles.featuredImage]}
-      />
+      <Pressable onPress={() => onOpenProduct?.(product)}>
+        <Image
+          source={{ uri: product.image }}
+          style={[styles.image, compact && styles.compactImage, featured && styles.featuredImage]}
+        />
+      </Pressable>
       <View style={[styles.body, compact && styles.compactBody, featured && styles.featuredBody]}>
         <Text numberOfLines={2} style={[styles.name, compact && styles.compactName, featured && styles.featuredName]}>
           {product.name}
@@ -31,10 +34,10 @@ export default function CatalogProductCard({ product, onAddToCart, compact = fal
           </View>
           <Pressable
             style={[styles.button, compact && styles.compactButton, featured && styles.featuredButton]}
-            onPress={() => onAddToCart?.(product)}
+            onPress={() => onOpenProduct?.(product)}
           >
             <Text style={[styles.buttonText, compact && styles.compactButtonText, featured && styles.featuredButtonText]}>
-              Add to Cart
+              Open Product
             </Text>
           </Pressable>
         </View>
@@ -42,6 +45,8 @@ export default function CatalogProductCard({ product, onAddToCart, compact = fal
     </View>
   );
 }
+
+export default memo(CatalogProductCard);
 
 const getStyles = (colors, isDarkMode) =>
   StyleSheet.create({
@@ -164,13 +169,13 @@ const getStyles = (colors, isDarkMode) =>
     },
     buttonText: {
       color: isDarkMode ? colors.black : colors.white,
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: "700",
     },
     compactButtonText: {
-      fontSize: 11,
+      fontSize: 10,
     },
     featuredButtonText: {
-      fontSize: 12,
+      fontSize: 11,
     },
   });

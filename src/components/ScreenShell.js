@@ -13,6 +13,7 @@ export default function ScreenShell({
   onSearchPress,
   onCartPress,
   cartCount,
+  auth,
   title,
   subtitle,
   headerActionLabel,
@@ -39,6 +40,7 @@ export default function ScreenShell({
           onSearchPress={onSearchPress}
           onCartPress={onCartPress}
           cartCount={cartCount}
+          auth={auth}
         />
         <ContentWrapper {...contentProps}>
           <View style={styles.sectionHeader}>
