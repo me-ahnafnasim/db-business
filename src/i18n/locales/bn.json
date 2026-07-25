@@ -75,7 +75,7 @@
     "packAllocation": "ডজনের জোড়া ভাগ করুন",
     "pairsOfRequired": "{{count}} / {{required}} জোড়া",
     "madeToOrder": "অর্ডার অনুযায়ী তৈরি",
-    "packPairTotal": "ঠিক ১২ জোড়া বরাদ্দ করুন। এখন মোট: {{count}}।",
+    "packPairTotal": "ঠিক {{required}} জোড়া বরাদ্দ করুন। এখন মোট: {{count}}।",
     "exactColorCount": "ঠিক {{required}}টি রং বেছে নিন। এখন নির্বাচিত: {{selected}}টি।",
     "exactSizeCount": "ঠিক {{required}}টি সাইজ বেছে নিন। এখন নির্বাচিত: {{selected}}টি।",
     "allocateEveryColor": "প্রতিটি প্রয়োজনীয় রঙে অন্তত এক জোড়া বরাদ্দ করুন।",

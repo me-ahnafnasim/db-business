@@ -75,7 +75,7 @@
     "packAllocation": "Allocate the dozen",
     "pairsOfRequired": "{{count}} / {{required}} pairs",
     "madeToOrder": "Made to order",
-    "packPairTotal": "Allocate exactly 12 pairs. Current total: {{count}}.",
+    "packPairTotal": "Allocate exactly {{required}} pairs. Current total: {{count}}.",
     "exactColorCount": "Select exactly {{required}} colors. Currently selected: {{selected}}.",
     "exactSizeCount": "Select exactly {{required}} sizes. Currently selected: {{selected}}.",
     "allocateEveryColor": "Allocate at least one pair to every required color.",

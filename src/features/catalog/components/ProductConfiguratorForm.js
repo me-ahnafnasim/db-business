@@ -29,11 +29,21 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
   }, [product.availability, selectedColors]);
 
   const totalPairs = selectedSizes.reduce((sum, s) => sum + Number(pairCounts[s] || 0), 0);
-  const allSizesHaveMinPairs = selectedSizes.length > 0 && selectedSizes.every((s) => Number(pairCounts[s] || 0) >= 2);
+  const allSizesHaveMinPairs = selectedSizes.length > 0 && selectedSizes.every((s) => Number(pairCounts[s] || 0) >= 2 * quantity);
 
   const toggleColor = (value) => {
     if (selectedColors.includes(value)) {
-      setSelectedColors((prev) => prev.filter((c) => c !== value));
+      const nextColors = selectedColors.filter((c) => c !== value);
+      const nextSizeSet = new Set(
+        product.availability
+          .filter((item) => nextColors.includes(item.colorCode))
+          .flatMap((item) => item.sizeCodes)
+      );
+      setSelectedColors(nextColors);
+      setSelectedSizes((prev) => prev.filter((s) => nextSizeSet.has(s)));
+      setPairCounts((prev) =>
+        Object.fromEntries(Object.entries(prev).filter(([s]) => nextSizeSet.has(s)))
+      );
     } else if (selectedColors.length < quantity) {
       const nextColors = [...selectedColors, value];
       const nextSizeSet = new Set(
@@ -71,8 +81,8 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
         ? t("catalog.selectSize")
         : !allSizesHaveMinPairs
           ? "Each size needs at least 2 pairs"
-          : totalPairs !== 12
-            ? t("catalog.packPairTotal", { count: totalPairs })
+          : totalPairs !== 12 * quantity
+            ? t("catalog.packPairTotal", { count: totalPairs, required: 12 * quantity })
             : "";
 
   const price = product.price;
@@ -81,13 +91,16 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
 
   const handleAdd = () => {
     const items = selectedColors.map((color) => {
-      const allocations = selectedSizes
-        .map((size) => {
-          const variant = variantByCell.get(`${color}:${size}`);
-          if (!variant) return null;
-          return { productVariantId: Number(variant.id), pairsPerDozen: Number(pairCounts[size]) };
-        })
-        .filter(Boolean);
+      const sizeList = selectedSizes.filter((size) => variantByCell.has(`${color}:${size}`));
+      const perDozenValues = sizeList.map((size) => Math.floor(Number(pairCounts[size] || 0) / quantity));
+      const baseSum = perDozenValues.reduce((a, b) => a + b, 0);
+      let remainder = 12 - baseSum;
+      const allocations = sizeList.map((size, i) => {
+        const variant = variantByCell.get(`${color}:${size}`);
+        const extra = remainder > 0 ? 1 : 0;
+        remainder--;
+        return { productVariantId: Number(variant.id), pairsPerDozen: perDozenValues[i] + extra };
+      });
       return { product, allocations, quantity: 1 };
     });
     onAddToCart(items);
@@ -138,8 +151,8 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
         <View style={styles.builder}>
           <View style={styles.builderHeader}>
             <Text style={styles.sectionTitle}>Pairs per dozen</Text>
-            <Text style={[styles.counter, totalPairs === 12 && styles.counterReady]}>
-              {totalPairs}/12
+            <Text style={[styles.counter, totalPairs === 12 * quantity && styles.counterReady]}>
+              {totalPairs}/{12 * quantity}
             </Text>
           </View>
           <Text style={styles.hint}>Minimum 2 pairs per size</Text>
