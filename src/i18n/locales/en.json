@@ -49,7 +49,7 @@
     "banner1Title": "Wholesale Footwear",
     "banner1Subtitle": "New styles for your business",
     "banner2Title": "Built for Retailers",
-    "banner2Subtitle": "Reliable stock in every size",
+    "banner2Subtitle": "Made-to-order sizes for every collection",
     "banner3Title": "NoboSole Collection",
     "banner3Subtitle": "Quality footwear, ready to order"
   },
@@ -69,24 +69,25 @@
     "detailsSubtitle": "Choose product options before adding to cart",
     "selectColor": "Select Color",
     "selectSize": "Select Size",
-    "selectPackColors": "Choose up to {{count}} colors",
-    "selectPackSizes": "Choose up to {{count}} sizes",
+    "colors": "Colors",
+    "sizes": "Sizes",
+    "selectionProgress": "{{selected}} of {{required}} required",
     "packAllocation": "Allocate the dozen",
-    "pairsOfTwelve": "{{count}} / 12 pairs",
-    "pairsInStock": "{{count}} pairs in stock",
-    "unavailable": "Unavailable",
+    "pairsOfRequired": "{{count}} / {{required}} pairs",
+    "madeToOrder": "Made to order",
     "packPairTotal": "Allocate exactly 12 pairs. Current total: {{count}}.",
-    "packStockError": "This recipe exceeds the available pair stock.",
+    "exactColorCount": "Select exactly {{required}} colors. Currently selected: {{selected}}.",
+    "exactSizeCount": "Select exactly {{required}} sizes. Currently selected: {{selected}}.",
+    "allocateEveryColor": "Allocate at least one pair to every required color.",
+    "allocateEverySize": "Allocate at least one pair to every required size.",
     "moqAcrossPacks": "MOQ is {{count}} dozen across all packs of this shoe.",
     "addPackToCart": "Add Pack to Cart",
     "selectedConfiguration": "Selected Configuration",
     "color": "Color",
     "size": "Size",
-    "sku": "SKU",
     "quantity": "Quantity",
     "minimumQuantity": "Minimum order quantity is {{count}} dozen.",
     "repeatPackHelp": "How many dozens should repeat this recipe? Shoe MOQ: {{count}} dozen.",
-    "stockAvailable": "Only {{count}} dozen available.",
     "enterQuantity": "Enter a quantity.",
     "combinationUnavailable": "This color and size combination is unavailable.",
     "addToCart": "Add to Cart",
@@ -101,7 +102,7 @@
   },
   "search": {
     "title": "Search",
-    "subtitle": "Search by name, SKU, or category",
+    "subtitle": "Search by product name or category",
     "placeholder": "Search products",
     "results": "{{count}} matching products",
     "empty": "No products match your search."
@@ -126,7 +127,7 @@
     ,"pairs": "{{count}} pairs"
     ,"moqRemaining": "Add {{count}} more dozen to meet this shoe's MOQ."
     ,"moqNotMet": "Meet the MOQ for every shoe before checkout."
-    ,"packInvalid": "This pack no longer matches current rules or stock. Remove it and rebuild."
+    ,"packInvalid": "This pack no longer matches the current product rules. Remove it and rebuild."
   },
   "checkout": {
     "shippingTitle": "Shipping",
@@ -297,7 +298,6 @@
     "clientOnly": "This staff account cannot use the customer app.",
     "profileIncomplete": "Complete your customer profile first.",
     "cartEmpty": "Your cart is empty.",
-    "insufficientStock": "One or more products no longer have enough stock.",
     "packRuleChanged": "This shoe's packing rules changed. Rebuild the pack.",
     "packPairTotal": "Each dozen must contain exactly 12 allocated pairs.",
     "packOptionLimit": "This pack uses too many colors or sizes.",

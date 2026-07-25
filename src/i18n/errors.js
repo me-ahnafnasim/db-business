@@ -8,7 +8,6 @@ const ERROR_KEYS = {
   PROFILE_INCOMPLETE: "errors.profileIncomplete",
   PROFILE_REQUIRED: "errors.profileIncomplete",
   CART_EMPTY: "errors.cartEmpty",
-  INSUFFICIENT_STOCK: "errors.insufficientStock",
   MOQ_NOT_MET: "cart.moqNotMet",
   PACK_RULE_CHANGED: "errors.packRuleChanged",
   PACK_PAIR_TOTAL: "errors.packPairTotal",

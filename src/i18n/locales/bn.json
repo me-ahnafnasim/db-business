@@ -69,24 +69,25 @@
     "detailsSubtitle": "কার্টে যোগ করার আগে পণ্যের অপশন বেছে নিন",
     "selectColor": "রং নির্বাচন করুন",
     "selectSize": "সাইজ নির্বাচন করুন",
-    "selectPackColors": "সর্বোচ্চ {{count}}টি রং বেছে নিন",
-    "selectPackSizes": "সর্বোচ্চ {{count}}টি সাইজ বেছে নিন",
+    "colors": "রং",
+    "sizes": "সাইজ",
+    "selectionProgress": "{{required}}টির মধ্যে {{selected}}টি নির্বাচিত",
     "packAllocation": "ডজনের জোড়া ভাগ করুন",
-    "pairsOfTwelve": "{{count}} / ১২ জোড়া",
-    "pairsInStock": "স্টকে {{count}} জোড়া",
-    "unavailable": "পাওয়া যাচ্ছে না",
+    "pairsOfRequired": "{{count}} / {{required}} জোড়া",
+    "madeToOrder": "অর্ডার অনুযায়ী তৈরি",
     "packPairTotal": "ঠিক ১২ জোড়া বরাদ্দ করুন। এখন মোট: {{count}}।",
-    "packStockError": "এই প্যাকের জন্য পর্যাপ্ত জোড়া স্টকে নেই।",
+    "exactColorCount": "ঠিক {{required}}টি রং বেছে নিন। এখন নির্বাচিত: {{selected}}টি।",
+    "exactSizeCount": "ঠিক {{required}}টি সাইজ বেছে নিন। এখন নির্বাচিত: {{selected}}টি।",
+    "allocateEveryColor": "প্রতিটি প্রয়োজনীয় রঙে অন্তত এক জোড়া বরাদ্দ করুন।",
+    "allocateEverySize": "প্রতিটি প্রয়োজনীয় সাইজে অন্তত এক জোড়া বরাদ্দ করুন।",
     "moqAcrossPacks": "এই জুতার সব প্যাক মিলিয়ে ন্যূনতম {{count}} ডজন।",
     "addPackToCart": "প্যাক কার্টে যোগ করুন",
     "selectedConfiguration": "নির্বাচিত কনফিগারেশন",
     "color": "রং",
     "size": "সাইজ",
-    "sku": "এসকেইউ",
     "quantity": "পরিমাণ",
     "minimumQuantity": "ন্যূনতম অর্ডার {{count}} ডজন।",
     "repeatPackHelp": "এই প্যাকটি কত ডজন হবে? জুতার ন্যূনতম অর্ডার: {{count}} ডজন।",
-    "stockAvailable": "মাত্র {{count}} ডজন স্টকে আছে।",
     "enterQuantity": "পরিমাণ লিখুন।",
     "combinationUnavailable": "এই রং ও সাইজের সমন্বয়টি পাওয়া যাচ্ছে না।",
     "addToCart": "কার্টে যোগ করুন",
@@ -101,7 +102,7 @@
   },
   "search": {
     "title": "খুঁজুন",
-    "subtitle": "নাম, এসকেইউ বা ক্যাটাগরি দিয়ে খুঁজুন",
+    "subtitle": "পণ্যের নাম বা ক্যাটাগরি দিয়ে খুঁজুন",
     "placeholder": "পণ্য খুঁজুন",
     "results": "{{count}}টি পণ্য পাওয়া গেছে",
     "empty": "আপনার অনুসন্ধানে কোনো পণ্য পাওয়া যায়নি।"
@@ -126,7 +127,7 @@
     ,"pairs": "{{count}} জোড়া"
     ,"moqRemaining": "ন্যূনতম পরিমাণ পূরণ করতে আরও {{count}} ডজন যোগ করুন।"
     ,"moqNotMet": "চেকআউটের আগে প্রতিটি জুতার ন্যূনতম পরিমাণ পূরণ করুন।"
-    ,"packInvalid": "এই প্যাকটি বর্তমান নিয়ম বা স্টকের সঙ্গে মিলছে না। সরিয়ে আবার তৈরি করুন।"
+    ,"packInvalid": "এই প্যাকটি বর্তমান পণ্যের নিয়মের সঙ্গে মিলছে না। সরিয়ে আবার তৈরি করুন।"
   },
   "checkout": {
     "shippingTitle": "ডেলিভারি",
@@ -297,7 +298,6 @@
     "clientOnly": "এই স্টাফ অ্যাকাউন্ট দিয়ে গ্রাহক অ্যাপ ব্যবহার করা যাবে না।",
     "profileIncomplete": "প্রথমে গ্রাহক প্রোফাইল সম্পূর্ণ করুন।",
     "cartEmpty": "আপনার কার্ট খালি।",
-    "insufficientStock": "এক বা একাধিক পণ্যের পর্যাপ্ত স্টক নেই।",
     "packRuleChanged": "এই জুতার প্যাকিং নিয়ম বদলেছে। প্যাকটি আবার তৈরি করুন।",
     "packPairTotal": "প্রতি ডজনে ঠিক ১২ জোড়া বরাদ্দ করতে হবে।",
     "packOptionLimit": "এই প্যাকে অনুমোদিত সংখ্যার বেশি রং বা সাইজ আছে।",

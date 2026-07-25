@@ -194,7 +194,3 @@ export async function getOrdersSummary(params = {}) {
 export async function getTopProducts(limit = 5) {
   return request('GET', `/analytics/top-products?limit=${limit}`);
 }
-
-export async function getLowStockProducts(threshold = 10, limit = 10) {
-  return request('GET', `/analytics/low-stock?threshold=${threshold}&limit=${limit}`);
-}

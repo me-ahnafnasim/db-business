@@ -28,7 +28,6 @@ export default function ProductSummaryCard({ product }) {
       />
       <View style={styles.body}>
         <Text style={styles.name}>{displayProduct.name}</Text>
-        <Text style={styles.meta}>{product.sku}</Text>
         {displayProduct.description ? <Text style={styles.description}>{displayProduct.description}</Text> : null}
         {product.discountPercent ? <View style={styles.saleRow}><Text style={styles.saleBadge}>{product.discountPercent}% OFF</Text><Text style={styles.originalPrice}>{formatBdt(product.originalPrice, language)}</Text></View> : null}
         <Text style={styles.price}>{t("catalog.from")} {formatBdt(product.price, language)} {t("catalog.perDozen")}</Text>
@@ -57,10 +56,6 @@ const getStyles = (colors) => StyleSheet.create({
     lineHeight: 31,
     fontWeight: "800",
     marginBottom: 4,
-  },
-  meta: {
-    color: colors.textSecondary,
-    fontSize: 13,
   },
   description: {
     color: colors.textSecondary,

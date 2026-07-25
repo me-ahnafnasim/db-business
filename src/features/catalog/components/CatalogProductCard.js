@@ -32,7 +32,6 @@ function CatalogProductCard({ product, onOpenProduct, cardWidth = 236 }) {
       </View>
       <View style={styles.body}>
         <Text numberOfLines={2} style={styles.name}>{displayProduct.name}</Text>
-        <Text numberOfLines={1} style={styles.meta}>{product.sku}</Text>
         {product.discountPercent ? <View style={styles.saleRow}><Text style={styles.saleBadge}>-{product.discountPercent}%</Text><Text style={styles.originalPrice}>{formatBdt(product.originalPrice, language)}</Text></View> : null}
         <Text style={styles.price}>{t("catalog.from")} {formatBdt(product.price, language)}</Text>
         <Text numberOfLines={1} style={styles.moq}>{t("catalog.moq", { count: product.moq })}</Text>
@@ -75,11 +74,6 @@ const getStyles = (colors, isDarkMode) => StyleSheet.create({
     lineHeight: 20,
     fontWeight: "800",
     minHeight: 40,
-  },
-  meta: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    marginTop: 3,
   },
   price: {
     color: colors.textPrimary,

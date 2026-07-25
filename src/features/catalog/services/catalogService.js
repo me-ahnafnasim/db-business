@@ -16,9 +16,7 @@ function discountedPaisa(value, campaign) {
 }
 
 export function mapApiProduct(product, index = 0, festivalCampaign = null) {
-  const variants = (product.variants || []).filter(
-    (variant) => variant.isActive && variant.stockQuantityPairs > 0
-  );
+  const variants = (product.variants || []).filter((variant) => variant.isActive);
   const originalPricePaisa = Number(product.pricePerDozenPaisa || 0);
   const pricePaisa = discountedPaisa(originalPricePaisa, festivalCampaign);
   const images = [...(product.images || [])]
@@ -41,16 +39,15 @@ export function mapApiProduct(product, index = 0, festivalCampaign = null) {
     nameBn: product.nameBn,
     description: product.description || "",
     descriptionBn: product.descriptionBn,
-    sku: product.productCode,
     image: primaryImage,
     images,
     price: paisaToBdt(pricePaisa),
     originalPrice: paisaToBdt(originalPricePaisa),
     discountPercent: Number(festivalCampaign?.discountPercent || 0),
     moq: Number(product.minimumOrderDozen || 1),
-    maxColorsPerDozen: Number(product.maxColorsPerDozen || 1),
-    maxSizesPerDozen: Number(product.maxSizesPerDozen || 1),
-    pairsPerDozen: 12,
+    requiredColorsPerDozen: Number(product.requiredColorsPerDozen || 1),
+    requiredSizesPerDozen: Number(product.requiredSizesPerDozen || 1),
+    pairsPerDozen: Number(product.pairsPerDozen || 12),
     unitLabel: "dozen",
     categoryName: "All Products",
     featuredRank: index + 1,

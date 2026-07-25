@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { getLocalizedError } from "../i18n/errors";
+import { supabase } from "../config/supabase";
 
 import { TAB_KEYS } from "../data/tabs";
 import { PAYMENT_OPTIONS } from "../features/checkout/data/paymentOptions";
@@ -67,6 +68,7 @@ export default function MainTabs({ auth, onSignOut }) {
   const [mutationBusy, setMutationBusy] = useState(false);
   const [mutationError, setMutationError] = useState("");
   const checkoutAttemptId = useRef(null);
+  const loadStoreRef = useRef(null);
 
   const loadStore = useCallback(async () => {
     setDataStatus("loading");
@@ -103,10 +105,37 @@ export default function MainTabs({ auth, onSignOut }) {
       setDataStatus("error");
     }
   }, [auth?.role, t]);
+  loadStoreRef.current = loadStore;
 
   useEffect(() => {
     loadStore();
   }, [loadStore]);
+
+  useEffect(() => {
+    let refreshTimer;
+    const scheduleRefresh = () => {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => loadStoreRef.current?.(), 500);
+    };
+    const channel = supabase
+      .channel("catalog-revision")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "catalog_revision", filter: "id=eq.1" },
+        scheduleRefresh
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") scheduleRefresh();
+      });
+    const appStateSubscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") scheduleRefresh();
+    });
+    return () => {
+      clearTimeout(refreshTimer);
+      appStateSubscription.remove();
+      void supabase.removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     const endsAt = storefront.activeFestivalDiscount?.endsAt;
