@@ -47,17 +47,15 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
     }
   }));
 
-  const colorSelectionReady = selectedColors.length === product.requiredColorsPerDozen;
-  const sizeSelectionReady = selectedSizes.length === product.requiredSizesPerDozen;
   const error = !quantity
     ? t("catalog.enterQuantity")
-    : !colorSelectionReady
-      ? t("catalog.exactColorCount", { selected: selectedColors.length, required: product.requiredColorsPerDozen })
-      : !sizeSelectionReady
-        ? t("catalog.exactSizeCount", { selected: selectedSizes.length, required: product.requiredSizesPerDozen })
-        : allocatedColors.size !== product.requiredColorsPerDozen
+    : !selectedColors.length
+      ? t("catalog.selectColor")
+      : !selectedSizes.length
+        ? t("catalog.selectSize")
+        : allocatedColors.size !== selectedColors.length
           ? t("catalog.allocateEveryColor")
-          : allocatedSizes.size !== product.requiredSizesPerDozen
+          : allocatedSizes.size !== selectedSizes.length
             ? t("catalog.allocateEverySize")
             : pairsPerDozen !== product.pairsPerDozen
               ? t("catalog.packPairTotal", { count: pairsPerDozen })
@@ -72,7 +70,6 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
       setPairCounts((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key.split(":")[1] !== value)));
       return;
     }
-    if (selectedSizes.length >= product.requiredSizesPerDozen) return;
     setSelectedSizes([...selectedSizes, value]);
   };
 
@@ -82,7 +79,6 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
       nextColors = selectedColors.filter((item) => item !== value);
       setPairCounts((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key.split(":")[0] !== value)));
     } else {
-      if (selectedColors.length >= product.requiredColorsPerDozen) return;
       nextColors = [...selectedColors, value];
     }
     const nextAvailableSizes = new Set(product.availability
@@ -98,7 +94,7 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
 
   return (
     <View>
-      <View style={styles.ruleHeader}><Text style={styles.sectionTitle}>{t("catalog.colors")}</Text><Text style={[styles.counter, colorSelectionReady && styles.counterReady]}>{t("catalog.selectionProgress", { selected: selectedColors.length, required: product.requiredColorsPerDozen })}</Text></View>
+      <View style={styles.ruleHeader}><Text style={styles.sectionTitle}>{t("catalog.colors")}</Text><Text style={[styles.counter, selectedColors.length > 0 && styles.counterReady]}>{t("catalog.selectionProgress", { selected: selectedColors.length, required: product.availableColors.length })}</Text></View>
       <View style={styles.optionWrap}>
         {product.availableColors.map((option) => {
           const active = selectedColors.includes(option.value);
@@ -106,7 +102,7 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
         })}
       </View>
 
-      <View style={styles.ruleHeader}><Text style={styles.sectionTitle}>{t("catalog.sizes")}</Text><Text style={[styles.counter, sizeSelectionReady && styles.counterReady]}>{t("catalog.selectionProgress", { selected: selectedSizes.length, required: product.requiredSizesPerDozen })}</Text></View>
+      <View style={styles.ruleHeader}><Text style={styles.sectionTitle}>{t("catalog.sizes")}</Text><Text style={[styles.counter, selectedSizes.length > 0 && styles.counterReady]}>{t("catalog.selectionProgress", { selected: selectedSizes.length, required: availableSizes.length })}</Text></View>
       <View style={styles.optionWrap}>
         {availableSizes.map((option) => {
           const active = selectedSizes.includes(option.value);
