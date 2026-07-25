@@ -223,12 +223,17 @@ export default function MainTabs({ auth, onSignOut }) {
       },
     ]);
   };
-  const handleAddConfiguredProduct = async (config) => {
-    if (!config?.product?.id || !config?.allocations?.length || mutationBusy) return;
+  const handleAddConfiguredProduct = async (configs) => {
+    if (!configs?.length || mutationBusy) return;
     setMutationBusy(true);
     setMutationError("");
     try {
-      setCartItems(await addConfiguredItem(config, catalog, storefront.activeFestivalDiscount));
+      let updatedCart = [];
+      for (const config of configs) {
+        if (!config?.product?.id || !config?.allocations?.length) continue;
+        updatedCart = await addConfiguredItem(config, catalog, storefront.activeFestivalDiscount);
+      }
+      setCartItems(updatedCart);
       setStack([]);
       setActiveTab(TAB_KEYS.CART);
     } catch (error) {
