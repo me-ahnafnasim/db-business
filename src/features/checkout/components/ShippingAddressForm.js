@@ -1,9 +1,11 @@
 import { StyleSheet, Text, TextInput, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { useTheme } from "../../../theme/ThemeProvider";
 
-export default function ShippingAddressForm({ value, onChange }) {
+export default function ShippingAddressForm({ value, onChange, phoneInvalid }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
 
   const updateField = (field, fieldValue) => {
@@ -15,45 +17,53 @@ export default function ShippingAddressForm({ value, onChange }) {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>Shipping Address</Text>
+      <Text style={styles.title}>{t("checkout.addressTitle")}</Text>
       <TextInput
-        value={value.fullName}
-        onChangeText={(text) => updateField("fullName", text)}
-        placeholder="Full name"
+        value={value.customerName}
+        onChangeText={(text) => updateField("customerName", text)}
+        placeholder={t("checkout.customerName")}
         placeholderTextColor={colors.textSecondary}
         style={styles.input}
       />
       <TextInput
         value={value.phone}
         onChangeText={(text) => updateField("phone", text)}
-        placeholder="Phone number"
+        placeholder={t("checkout.phone")}
         placeholderTextColor={colors.textSecondary}
         keyboardType="phone-pad"
-        style={styles.input}
+        style={[styles.input, phoneInvalid && styles.inputError]}
       />
+      {phoneInvalid ? <Text style={styles.errorText}>{t("checkout.phoneInvalid")}</Text> : null}
       <TextInput
-        value={value.addressLine}
-        onChangeText={(text) => updateField("addressLine", text)}
-        placeholder="Address line"
+        value={value.division}
+        onChangeText={(text) => updateField("division", text)}
+        placeholder={t("checkout.division")}
         placeholderTextColor={colors.textSecondary}
         style={styles.input}
       />
       <View style={styles.row}>
         <TextInput
-          value={value.city}
-          onChangeText={(text) => updateField("city", text)}
-          placeholder="City"
+          value={value.district}
+          onChangeText={(text) => updateField("district", text)}
+          placeholder={t("checkout.district")}
           placeholderTextColor={colors.textSecondary}
           style={[styles.input, styles.halfInput]}
         />
         <TextInput
-          value={value.postalCode}
-          onChangeText={(text) => updateField("postalCode", text)}
-          placeholder="Postal code"
+          value={value.thana}
+          onChangeText={(text) => updateField("thana", text)}
+          placeholder={t("checkout.thana")}
           placeholderTextColor={colors.textSecondary}
           style={[styles.input, styles.halfInput]}
         />
       </View>
+      <TextInput
+        value={value.shopName}
+        onChangeText={(text) => updateField("shopName", text)}
+        placeholder={t("checkout.shopName")}
+        placeholderTextColor={colors.textSecondary}
+        style={[styles.input, styles.lastInput]}
+      />
     </View>
   );
 }
@@ -93,5 +103,16 @@ const getStyles = (colors) =>
     halfInput: {
       flex: 1,
       marginBottom: 0,
+    },
+    lastInput: { marginTop: 12, marginBottom: 0 },
+    inputError: {
+      borderColor: "#ef4444",
+    },
+    errorText: {
+      color: "#ef4444",
+      fontSize: 12,
+      fontWeight: "600",
+      marginTop: -6,
+      marginBottom: 10,
     },
   });

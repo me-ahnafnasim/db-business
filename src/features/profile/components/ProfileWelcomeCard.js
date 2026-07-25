@@ -1,14 +1,20 @@
-import { Feather } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
 import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { getTimeGreeting } from "../../shared/utils/timeGreeting";
 import { useTheme } from "../../../theme/ThemeProvider";
 
 export default function ProfileWelcomeCard({ auth }) {
   const { colors, isDarkMode } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(colors, isDarkMode);
-  const title = auth?.isSignedIn ? `Welcome, ${auth.displayName}` : "Welcome";
-  const subtitle = auth?.isSignedIn ? `${getTimeGreeting()} — account ready` : "Sign in to continue";
+  const title = auth?.isSignedIn
+    ? t("profile.welcomeUser", { name: auth.displayName })
+    : t("profile.welcome");
+  const subtitle = auth?.isSignedIn
+    ? `${getTimeGreeting(t)} — ${t("profile.accountReady")}`
+    : t("profile.signInToContinue");
 
   return (
     <View style={styles.card}>
@@ -41,16 +47,20 @@ const getStyles = (colors, isDarkMode) =>
     },
     textWrap: {
       marginLeft: 12,
+      flex: 1,
+      flexShrink: 1,
     },
     title: {
       color: colors.black,
       fontSize: 24,
       fontWeight: "700",
       marginBottom: 4,
+      flexShrink: 1,
     },
     subtitle: {
       color: "#4b5563",
       fontSize: 18,
       fontWeight: "400",
+      flexShrink: 1,
     },
   });

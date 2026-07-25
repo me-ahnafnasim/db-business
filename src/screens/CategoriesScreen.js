@@ -1,10 +1,12 @@
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import ScreenShell from "../components/ScreenShell";
 import CategoryFilterBar from "../features/catalog/components/CategoryFilterBar";
 import CatalogProductCard from "../features/catalog/components/CatalogProductCard";
 import { getCategoryById, getFilteredProducts } from "../features/catalog/utils/catalogSelectors";
+import { useResponsiveGrid } from "../hooks/useResponsiveGrid";
 import { useTheme } from "../theme/ThemeProvider";
 
 const PAGE_SIZE = 14;
@@ -23,6 +25,8 @@ export default function CategoriesScreen({
   auth,
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const grid = useResponsiveGrid();
   const styles = getStyles(colors);
   const selectedCategory = getCategoryById(catalog.categories, selectedCategoryId);
   const products = useMemo(
@@ -44,10 +48,10 @@ export default function CategoriesScreen({
     setVisibleCount((currentCount) => currentCount + PAGE_SIZE);
   };
   const renderProduct = useCallback(
-    ({ item }) => <CatalogProductCard product={item} compact onOpenProduct={onOpenProduct} />,
-    [onOpenProduct]
+    ({ item }) => <CatalogProductCard product={item} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />,
+    [grid.cardWidth, onOpenProduct]
   );
-  const footer = products.length > visibleCount ? <Text style={styles.footerText}>Loading more products...</Text> : null;
+  const footer = products.length > visibleCount ? <Text style={styles.footerText}>{t("catalog.loadingMore")}</Text> : null;
 
   return (
     <ScreenShell
@@ -58,11 +62,11 @@ export default function CategoriesScreen({
       onCartPress={onCartPress}
       cartCount={cartCount}
       auth={auth}
-      title={selectedCategory ? selectedCategory.name : "All Shoe Categories"}
+      title={selectedCategory ? (selectedCategory.nameKey ? t(selectedCategory.nameKey) : selectedCategory.name) : t("catalog.allCategories")}
       subtitle={
         selectedCategory
-          ? `${selectedCategory.description} · Showing ${products.length} products`
-          : "Browse all categories with scalable grid loading"
+          ? t("catalog.categorySummary", { description: selectedCategory.descriptionKey ? t(selectedCategory.descriptionKey) : selectedCategory.description, count: products.length })
+          : t("catalog.browseAll")
       }
       scrollable={false}
     >
@@ -74,12 +78,13 @@ export default function CategoriesScreen({
         />
         <FlatList
           data={visibleProducts}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
+          keyExtractor={(item, index) => item?.id ?? String(index)}
+          key={`categories-${grid.columns}`}
+          numColumns={grid.columns}
+          columnWrapperStyle={grid.columns > 1 ? [styles.row, { gap: grid.gap }] : undefined}
           contentContainerStyle={styles.list}
           renderItem={renderProduct}
-          ListEmptyComponent={<Text style={styles.emptyText}>No products found.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>{t("catalog.noProducts")}</Text>}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={footer}
@@ -103,7 +108,7 @@ const getStyles = (colors) =>
       paddingBottom: 24,
     },
     row: {
-      justifyContent: "space-between",
+      alignItems: "stretch",
     },
     emptyText: {
       color: colors.textSecondary,

@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import StackScreenShell from "../components/StackScreenShell";
 import CheckoutSummaryCard from "../features/checkout/components/CheckoutSummaryCard";
@@ -8,17 +9,18 @@ import { useTheme } from "../theme/ThemeProvider";
 
 export default function PaymentScreen({ paymentMethod, onBack, onSelectPayment, onContinue }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
   const selectedMethod = PAYMENT_OPTIONS.find((option) => option.id === paymentMethod) ?? null;
 
   return (
     <StackScreenShell
-      title="Payment"
-      subtitle="Choose a payment method"
+      title={t("checkout.paymentTitle")}
+      subtitle={t("checkout.paymentSubtitle")}
       onBack={onBack}
       footer={
         <Pressable style={[styles.button, !selectedMethod && styles.buttonDisabled]} disabled={!selectedMethod} onPress={onContinue}>
-          <Text style={styles.buttonText}>Review Order</Text>
+          <Text style={styles.buttonText}>{t("checkout.reviewOrder")}</Text>
         </Pressable>
       }
     >
@@ -31,9 +33,9 @@ export default function PaymentScreen({ paymentMethod, onBack, onSelectPayment, 
         />
       ))}
       <CheckoutSummaryCard
-        title="Selected Method"
+        title={t("checkout.selectedMethod")}
         rows={[
-          { label: "Payment", value: selectedMethod?.label ?? "Not selected" },
+          { label: t("checkout.payment"), value: selectedMethod ? t(selectedMethod.labelKey) : t("common.notSelected") },
         ]}
       />
     </StackScreenShell>
@@ -47,13 +49,13 @@ const getStyles = (colors) =>
       borderRadius: 16,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: colors.white,
+      backgroundColor: "#d4af37",
     },
     buttonDisabled: {
       opacity: 0.45,
     },
     buttonText: {
-      color: colors.black,
+      color: "#0a0e27",
       fontSize: 16,
       fontWeight: "700",
     },

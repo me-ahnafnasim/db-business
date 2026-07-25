@@ -1,7 +1,10 @@
-import { Feather } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
+import { useLanguage } from "../../../i18n/LanguageProvider";
 import { useTheme } from "../../../theme/ThemeProvider";
+import { formatBdt } from "../../../utils/money";
 
 export default function CartSummaryPanel({
   subtotal,
@@ -9,28 +12,31 @@ export default function CartSummaryPanel({
   onCheckout,
 }) {
   const { colors } = useTheme();
+  const { language } = useLanguage();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
   const total = subtotal - discount;
+  const disabled = subtotal <= 0;
 
   return (
     <View style={styles.summaryPanel}>
       <View style={styles.summaryRow}>
-        <Text style={styles.summaryLabel}>Subtotal</Text>
-        <Text style={styles.summaryValue}>${subtotal.toFixed(2)}</Text>
+        <Text style={styles.summaryLabel}>{t("cart.subtotal")}</Text>
+        <Text style={styles.summaryValue}>{formatBdt(subtotal, language)}</Text>
       </View>
       {discount > 0 ? (
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Discount</Text>
-          <Text style={styles.summaryValue}>-${discount.toFixed(2)}</Text>
+          <Text style={styles.summaryLabel}>{t("cart.discount")}</Text>
+          <Text style={styles.summaryValue}>-{formatBdt(discount, language)}</Text>
         </View>
       ) : null}
       <View style={styles.divider} />
       <View style={styles.summaryRow}>
-        <Text style={styles.totalLabel}>Total</Text>
-        <Text style={styles.totalValue}>${total.toFixed(2)}</Text>
+        <Text style={styles.totalLabel}>{t("cart.total")}</Text>
+        <Text style={styles.totalValue}>{formatBdt(total, language)}</Text>
       </View>
-      <Pressable style={styles.checkoutButton} onPress={onCheckout}>
-        <Text style={styles.checkoutText}>Checkout</Text>
+      <Pressable disabled={disabled} style={[styles.checkoutButton, disabled && styles.checkoutButtonDisabled]} onPress={onCheckout}>
+        <Text style={styles.checkoutText}>{t("cart.checkout")}</Text>
         <Feather name="arrow-right" size={28} color={colors.black} />
       </Pressable>
     </View>
@@ -78,7 +84,7 @@ const getStyles = (colors) =>
     },
     checkoutButton: {
       marginTop: 10,
-      backgroundColor: colors.white,
+      backgroundColor: "#d4af37",
       borderRadius: 26,
       paddingVertical: 10,
       flexDirection: "row",
@@ -87,8 +93,9 @@ const getStyles = (colors) =>
       gap: 12,
     },
     checkoutText: {
-      color: colors.black,
+      color: "#0a0e27",
       fontSize: 14,
       fontWeight: "700",
     },
+    checkoutButtonDisabled: { opacity: 0.4 },
   });

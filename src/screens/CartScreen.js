@@ -1,11 +1,11 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import ScreenShell from "../components/ScreenShell";
-import CartCouponCard from "../features/cart/components/CartCouponCard";
 import CartLineItem from "../features/cart/components/CartLineItem";
 import CartSummaryPanel from "../features/cart/components/CartSummaryPanel";
-import { getCartSubtotal } from "../features/checkout/utils/checkoutPricing";
+import { getCartSubtotal, getDiscountAmount } from "../features/checkout/utils/checkoutPricing";
 import { useTheme } from "../theme/ThemeProvider";
 
 export default function CartScreen({
@@ -21,18 +21,15 @@ export default function CartScreen({
   onRemoveCartItem,
   onClearCart,
   onCheckout,
+  error,
   auth,
+  festivalCampaign,
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState("");
   const subtotal = useMemo(() => getCartSubtotal(cartItems), [cartItems]);
-  const discount = appliedCoupon === "SAVE10" ? subtotal * 0.1 : 0;
-
-  const handleApplyCoupon = () => {
-    setAppliedCoupon(couponCode.trim().toUpperCase());
-  };
+  const discount = useMemo(() => getDiscountAmount(subtotal, festivalCampaign), [festivalCampaign, subtotal]);
 
   return (
     <ScreenShell
@@ -43,8 +40,8 @@ export default function CartScreen({
       onCartPress={onCartPress}
       cartCount={cartCount}
       auth={auth}
-      title="My Cart"
-      headerActionLabel={cartItems.length ? "Clear All" : ""}
+      title={t("cart.title")}
+      headerActionLabel={cartItems.length ? t("cart.clearAll") : ""}
       onHeaderAction={onClearCart}
       scrollable={false}
     >
@@ -61,18 +58,14 @@ export default function CartScreen({
                   onRemove={() => onRemoveCartItem?.(item.lineId ?? item.id)}
                 />
               ))}
-              <CartCouponCard
-                couponCode={couponCode}
-                onCouponChange={setCouponCode}
-                onApplyCoupon={handleApplyCoupon}
-              />
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
             </>
           ) : (
-            <Text style={styles.emptyText}>Your cart is empty.</Text>
+            <Text style={styles.emptyText}>{t("cart.empty")}</Text>
           )}
         </ScrollView>
 
-        <CartSummaryPanel subtotal={subtotal} discount={discount} onCheckout={() => onCheckout?.(appliedCoupon)} />
+        <CartSummaryPanel subtotal={subtotal} discount={discount} onCheckout={() => onCheckout?.("")} />
       </View>
     </ScreenShell>
   );
@@ -96,5 +89,11 @@ const getStyles = (colors) =>
       textAlign: "center",
       marginTop: 40,
       fontSize: 16,
+    },
+    errorText: {
+      color: colors.accent,
+      textAlign: "center",
+      fontSize: 14,
+      marginBottom: 16,
     },
   });

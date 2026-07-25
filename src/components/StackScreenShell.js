@@ -1,7 +1,8 @@
-import { Feather } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
 import { StatusBar } from "expo-status-bar";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 
 import { useTheme } from "../theme/ThemeProvider";
 
@@ -14,6 +15,7 @@ export default function StackScreenShell({
   children,
 }) {
   const { colors, isDarkMode } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
   const ContentWrapper = scrollable ? ScrollView : View;
   const contentProps = scrollable
@@ -30,7 +32,7 @@ export default function StackScreenShell({
       <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={colors.surface} />
       <View style={styles.container}>
         <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={onBack}>
+          <Pressable style={styles.backButton} onPress={onBack} accessibilityRole="button" accessibilityLabel={t("common.back")}>
             <Feather name="chevron-left" size={22} color={colors.textPrimary} />
           </Pressable>
           <View style={styles.headerText}>

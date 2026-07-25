@@ -1,181 +1,115 @@
+import Feather from "@expo/vector-icons/Feather";
 import { memo } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
+import { useLanguage } from "../../../i18n/LanguageProvider";
+import { getLocalizedProduct } from "../../../i18n/product";
 import { useTheme } from "../../../theme/ThemeProvider";
+import { formatBdt } from "../../../utils/money";
+import ProductImage from "./ProductImage";
 
-function CatalogProductCard({ product, onOpenProduct, compact = false, featured = false }) {
+function CatalogProductCard({ product, onOpenProduct, cardWidth = 236 }) {
   const { colors, isDarkMode } = useTheme();
+  const { language } = useLanguage();
+  const { t } = useTranslation();
   const styles = getStyles(colors, isDarkMode);
+  const displayProduct = getLocalizedProduct(product, language);
 
   return (
-    <View style={[styles.card, compact && styles.compactCard, featured && styles.featuredCard]}>
-      <Pressable onPress={() => onOpenProduct?.(product)}>
-        <Image
-          source={{ uri: product.image }}
-          style={[styles.image, compact && styles.compactImage, featured && styles.featuredImage]}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${t("catalog.viewProduct")}: ${displayProduct.name}`}
+      onPress={() => onOpenProduct?.(product)}
+      style={({ pressed }) => [styles.card, { width: cardWidth }, pressed && styles.cardPressed]}
+    >
+      <View style={styles.imageFrame}>
+        <ProductImage
+          uri={product.image}
+          accessibilityLabel={t("catalog.imageOf", { current: 1, total: product.images?.length || 1, name: displayProduct.name })}
+          borderRadius={16}
         />
-      </Pressable>
-      <View style={[styles.body, compact && styles.compactBody, featured && styles.featuredBody]}>
-        <Text numberOfLines={2} style={[styles.name, compact && styles.compactName, featured && styles.featuredName]}>
-          {product.name}
-        </Text>
-        <Text style={[styles.meta, compact && styles.compactMeta, featured && styles.featuredMeta]}>{product.sku}</Text>
-        <Text style={[styles.meta, compact && styles.compactMeta, featured && styles.featuredMeta]}>
-          {product.categoryName}
-        </Text>
-        <View style={[styles.footer, compact && styles.compactFooter, featured && styles.featuredFooter]}>
-          <View>
-            <Text style={[styles.price, compact && styles.compactPrice, featured && styles.featuredPrice]}>
-              ${product.price}
-            </Text>
-            <Text style={[styles.moq, compact && styles.compactMoq, featured && styles.featuredMoq]}>
-              MOQ {product.moq}
-            </Text>
-          </View>
-          <Pressable
-            style={[styles.button, compact && styles.compactButton, featured && styles.featuredButton]}
-            onPress={() => onOpenProduct?.(product)}
-          >
-            <Text style={[styles.buttonText, compact && styles.compactButtonText, featured && styles.featuredButtonText]}>
-              Open Product
-            </Text>
-          </Pressable>
+      </View>
+      <View style={styles.body}>
+        <Text numberOfLines={2} style={styles.name}>{displayProduct.name}</Text>
+        <Text numberOfLines={1} style={styles.meta}>{product.sku}</Text>
+        {product.discountPercent ? <View style={styles.saleRow}><Text style={styles.saleBadge}>-{product.discountPercent}%</Text><Text style={styles.originalPrice}>{formatBdt(product.originalPrice, language)}</Text></View> : null}
+        <Text style={styles.price}>{t("catalog.from")} {formatBdt(product.price, language)}</Text>
+        <Text numberOfLines={1} style={styles.moq}>{t("catalog.moq", { count: product.moq })}</Text>
+        <View style={styles.button}>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={styles.buttonText}>
+            {t("catalog.viewProduct")}
+          </Text>
+          <Feather name="arrow-right" size={16} color={isDarkMode ? colors.black : "#0a0e27"} />
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 export default memo(CatalogProductCard);
 
-const getStyles = (colors, isDarkMode) =>
-  StyleSheet.create({
-    card: {
-      width: 236,
-      backgroundColor: colors.surface,
-      borderRadius: 22,
-      overflow: "hidden",
-      marginRight: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    compactCard: {
-      width: "48%",
-      marginRight: 0,
-      marginBottom: 14,
-    },
-    featuredCard: {
-      width: "49%",
-    },
-    image: {
-      width: "100%",
-      height: 144,
-      backgroundColor: isDarkMode ? "#111827" : "#e5e7eb",
-    },
-    compactImage: {
-      height: 98,
-    },
-    featuredImage: {
-      height: 118,
-    },
-    body: {
-      padding: 14,
-      gap: 4,
-    },
-    compactBody: {
-      padding: 10,
-      gap: 2,
-    },
-    featuredBody: {
-      padding: 12,
-      gap: 3,
-    },
-    name: {
-      color: colors.textPrimary,
-      fontSize: 16,
-      fontWeight: "700",
-      minHeight: 40,
-    },
-    compactName: {
-      fontSize: 14,
-      minHeight: 34,
-    },
-    featuredName: {
-      fontSize: 15,
-      minHeight: 36,
-    },
-    meta: {
-      color: colors.textSecondary,
-      fontSize: 13,
-    },
-    compactMeta: {
-      fontSize: 11,
-    },
-    featuredMeta: {
-      fontSize: 12,
-    },
-    footer: {
-      marginTop: 8,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 10,
-    },
-    compactFooter: {
-      marginTop: 6,
-      gap: 6,
-    },
-    featuredFooter: {
-      marginTop: 7,
-      gap: 8,
-    },
-    price: {
-      color: colors.textPrimary,
-      fontSize: 18,
-      fontWeight: "800",
-    },
-    compactPrice: {
-      fontSize: 15,
-    },
-    featuredPrice: {
-      fontSize: 16,
-    },
-    moq: {
-      color: colors.textSecondary,
-      fontSize: 13,
-      marginTop: 2,
-    },
-    compactMoq: {
-      fontSize: 11,
-    },
-    featuredMoq: {
-      fontSize: 12,
-    },
-    button: {
-      backgroundColor: isDarkMode ? colors.white : colors.tabActive,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderRadius: 14,
-    },
-    compactButton: {
-      paddingHorizontal: 10,
-      paddingVertical: 8,
-      borderRadius: 10,
-    },
-    featuredButton: {
-      paddingHorizontal: 12,
-      paddingVertical: 9,
-      borderRadius: 12,
-    },
-    buttonText: {
-      color: isDarkMode ? colors.black : colors.white,
-      fontSize: 12,
-      fontWeight: "700",
-    },
-    compactButtonText: {
-      fontSize: 10,
-    },
-    featuredButtonText: {
-      fontSize: 11,
-    },
-  });
+const getStyles = (colors, isDarkMode) => StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 14,
+  },
+  cardPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.985 }],
+  },
+  imageFrame: {
+    padding: 8,
+  },
+  body: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+  },
+  name: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "800",
+    minHeight: 40,
+  },
+  meta: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginTop: 3,
+  },
+  price: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: "800",
+    marginTop: 8,
+  },
+  saleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 7 },
+  saleBadge: { color: "#7a220b", backgroundColor: "#f4ca55", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3, fontSize: 10, fontWeight: "900" },
+  originalPrice: { color: colors.textSecondary, fontSize: 12, textDecorationLine: "line-through" },
+  moq: {
+    color: colors.textSecondary,
+    fontSize: 11,
+    marginTop: 3,
+  },
+  button: {
+    minHeight: 44,
+    borderRadius: 13,
+    backgroundColor: isDarkMode ? "#d4af37" : "#e5bd42",
+    marginTop: 12,
+    paddingHorizontal: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  buttonText: {
+    color: isDarkMode ? colors.black : "#0a0e27",
+    fontSize: 12,
+    fontWeight: "800",
+    flexShrink: 1,
+  },
+});

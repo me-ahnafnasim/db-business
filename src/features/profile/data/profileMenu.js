@@ -2,17 +2,17 @@ export const supportItems = [
   {
     key: "help-center",
     icon: "help-circle",
-    label: "Help Center",
+    labelKey: "profile.helpCenter",
   },
   {
     key: "customer-service",
     icon: "headphones",
-    label: "Customer Service",
+    labelKey: "profile.customerService",
   },
   {
     key: "blog",
     icon: "file-text",
-    label: "Blog",
+    labelKey: "profile.blog",
   },
 ];
 
@@ -20,19 +20,17 @@ export const settingsItems = [
   {
     key: "currency",
     icon: "dollar-sign",
-    label: "Currency",
-    value: "USD",
+    labelKey: "profile.currency",
+    staticValue: "BDT",
   },
   {
     key: "language",
     icon: "globe",
-    label: "Language",
-    value: "🇺🇸 English",
+    labelKey: "profile.language",
   },
   {
     key: "theme",
     icon: "sun",
-    label: "Theme",
-    value: "Dark",
+    labelKey: "profile.theme",
   },
 ];

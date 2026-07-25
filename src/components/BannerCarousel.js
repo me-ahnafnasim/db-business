@@ -1,15 +1,17 @@
 import { LinearGradient } from "expo-linear-gradient";
-import { Feather } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   FlatList,
+  ImageBackground,
   Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from "react-native";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import { useTheme } from "../theme/ThemeProvider";
 
@@ -90,17 +92,22 @@ export default function BannerCarousel({ slides }) {
       });
 
       return (
-        <View style={[styles.slide, { width: slideWidth, height: slideHeight }]}>
-          <Animated.View style={[styles.banner, { opacity, transform: [{ scale }] }]}>
-            <LinearGradient colors={item.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
-              <Animated.View style={[styles.bannerContent, { transform: [{ translateY }] }]}>
+        <View style={[styles.slide, { width: slideWidth, height: slideHeight }]}> 
+          <Animated.View style={[styles.banner, { opacity, transform: [{ scale }] }]}> 
+            {item.imageUrl ? <ImageBackground source={{ uri: item.imageUrl }} resizeMode="cover" style={styles.gradient}>
+              <LinearGradient colors={["rgba(5,9,24,0.12)", "rgba(5,9,24,0.88)"]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={styles.gradient}>
+              <Animated.View style={[styles.bannerContent, { transform: [{ translateY }] }]}> 
                 <Text style={styles.bannerSubtitle}>{item.subtitle}</Text>
                 <Text style={styles.bannerTitle}>{item.title}</Text>
-                <Text style={styles.bannerSize}>
-                  {`${Math.round(slideWidth)} x ${Math.round(slideHeight)}`}
-                </Text>
               </Animated.View>
-            </LinearGradient>
+              </LinearGradient>
+            </ImageBackground> : <LinearGradient colors={item.colors || ["#0a0e27", "#7c5d12"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
+              <Animated.View style={[styles.bannerContent, { transform: [{ translateY }] }]}> 
+                <MaterialCommunityIcons name="shoe-sneaker" size={42} color="rgba(255,255,255,0.9)" style={styles.bannerIcon} />
+                <Text style={styles.bannerSubtitle}>{item.subtitle}</Text>
+                <Text style={styles.bannerTitle}>{item.title}</Text>
+              </Animated.View>
+            </LinearGradient>}
           </Animated.View>
         </View>
       );
@@ -117,7 +124,7 @@ export default function BannerCarousel({ slides }) {
         pagingEnabled
         bounces={false}
         showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => item?.id ?? String(index)}
         renderItem={renderItem}
         onMomentumScrollEnd={handleMomentumEnd}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
@@ -203,17 +210,14 @@ const getStyles = (colors) =>
     fontSize: 16,
     marginBottom: 6,
   },
+  bannerIcon: {
+    marginBottom: 8,
+  },
   bannerTitle: {
     color: colors.white,
     fontSize: 32,
     fontWeight: "800",
     marginBottom: 10,
-  },
-  bannerSize: {
-    color: colors.white,
-    fontSize: 22,
-    fontWeight: "700",
-    letterSpacing: 1,
   },
   arrowButton: {
     position: "absolute",

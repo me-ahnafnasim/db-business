@@ -1,27 +1,42 @@
-import { Feather } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
+import { useLanguage } from "../../../i18n/LanguageProvider";
 import { useTheme } from "../../../theme/ThemeProvider";
 
-export default function ProfileListCard({ items, onThemePress, themeValue }) {
+export default function ProfileListCard({
+  items,
+  onThemePress,
+  onLanguagePress,
+  themeValue,
+}) {
   const { colors } = useTheme();
+  const { languageLabel } = useLanguage();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
 
   return (
     <View style={styles.card}>
       {items.map((item, index) => {
         const isThemeItem = item.key === "theme";
-        const value = isThemeItem ? themeValue || item.value : item.value;
+        const isLanguageItem = item.key === "language";
+        const value = isThemeItem
+          ? themeValue
+          : isLanguageItem
+            ? languageLabel
+            : item.staticValue ?? null;
+        const onPress = isThemeItem ? onThemePress : isLanguageItem ? onLanguagePress : undefined;
 
         return (
           <Pressable
             key={item.key}
             style={({ pressed }) => [styles.row, index < items.length - 1 && styles.rowBorder, pressed && styles.rowPressed]}
-            onPress={isThemeItem ? onThemePress : undefined}
+            onPress={onPress}
           >
             <View style={styles.left}>
-              <Feather name={item.icon} size={26} color={colors.white} />
-              <Text style={styles.label}>{item.label}</Text>
+              <Feather name={item.icon} size={26} color={colors.tabActive} />
+              <Text style={styles.label}>{t(item.labelKey)}</Text>
             </View>
 
             <View style={styles.right}>
@@ -61,21 +76,26 @@ const getStyles = (colors) =>
       flexDirection: "row",
       alignItems: "center",
       flex: 1,
+      flexShrink: 1,
     },
     right: {
       flexDirection: "row",
       alignItems: "center",
       marginLeft: 12,
+      flexShrink: 0,
     },
     label: {
       color: colors.textPrimary,
       fontSize: 18,
       fontWeight: "500",
       marginLeft: 14,
+      flexShrink: 1,
     },
     value: {
       color: colors.textSecondary,
       fontSize: 16,
       marginRight: 12,
+      flexShrink: 1,
+      textAlign: "right",
     },
   });

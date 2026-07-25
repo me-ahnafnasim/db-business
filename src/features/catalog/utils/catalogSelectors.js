@@ -22,6 +22,7 @@ export function getFilteredProducts(categories, query = "", categoryId = null) {
     const matchesQuery =
       !normalizedQuery ||
       product.name.toLowerCase().includes(normalizedQuery) ||
+      product.nameBn?.toLowerCase().includes(normalizedQuery) ||
       product.sku.toLowerCase().includes(normalizedQuery) ||
       product.categoryName.toLowerCase().includes(normalizedQuery);
 

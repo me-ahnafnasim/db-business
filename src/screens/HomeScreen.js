@@ -1,16 +1,19 @@
 import { StatusBar } from "expo-status-bar";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 import BannerCarousel from "../components/BannerCarousel";
+import FestivalDiscountBanner from "../components/FestivalDiscountBanner";
 import BottomNav from "../components/BottomNav";
 import Header from "../components/Header";
-import { bannerSlides } from "../data/mockData";
 import CatalogProductCard from "../features/catalog/components/CatalogProductCard";
 import CatalogSectionHeader from "../features/catalog/components/CatalogSectionHeader";
 import { flattenProducts } from "../features/catalog/utils/catalogSelectors";
+import { useResponsiveGrid } from "../hooks/useResponsiveGrid";
 import { useTheme } from "../theme/ThemeProvider";
+import { useLanguage } from "../i18n/LanguageProvider";
 
 export default function HomeScreen({
   activeTab,
@@ -23,9 +26,28 @@ export default function HomeScreen({
   onOpenProduct,
   cartCount,
   auth,
+  storefront,
+  festivalCampaign,
 }) {
   const { colors, isDarkMode } = useTheme();
+  const { t } = useTranslation();
+  const { language } = useLanguage();
+  const grid = useResponsiveGrid();
   const styles = getStyles(colors);
+  const bannerSlides = useMemo(() => {
+    const managed = storefront?.carouselSlides || [];
+    if (managed.length) return managed.map((slide) => ({
+      ...slide,
+      id: String(slide.id),
+      title: language === "bn" && slide.titleBn ? slide.titleBn : slide.title,
+      subtitle: language === "bn" && slide.subtitleBn ? slide.subtitleBn : slide.subtitle,
+    }));
+    return [
+      { id: "footwear", title: t("home.banner1Title"), subtitle: t("home.banner1Subtitle"), colors: ["#0a0e27", "#7c5d12"] },
+      { id: "retailers", title: t("home.banner2Title"), subtitle: t("home.banner2Subtitle"), colors: ["#0f2742", "#087a91"] },
+      { id: "collection", title: t("home.banner3Title"), subtitle: t("home.banner3Subtitle"), colors: ["#151a35", "#5f3a8d"] },
+    ];
+  }, [language, storefront?.carouselSlides, t]);
   const homeProducts = useMemo(() => {
     return flattenProducts(catalog.categories)
       .sort((leftProduct, rightProduct) => {
@@ -52,23 +74,29 @@ export default function HomeScreen({
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
           <BannerCarousel slides={bannerSlides} />
+          <FestivalDiscountBanner campaign={festivalCampaign} />
           <View style={styles.featuredSection}>
-            <CatalogSectionHeader title="Featured Picks" onPress={() => onViewCategory?.(null)} actionLabel="View All" />
-            <View style={styles.topRow}>
-              {topProducts.map((product) => (
+            {!homeProducts.length ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyTitle}>{t("home.noProductsTitle")}</Text>
+                <Text style={styles.emptyText}>{t("home.noProductsText")}</Text>
+              </View>
+            ) : null}
+            <CatalogSectionHeader title={t("home.featured")} onPress={() => onViewCategory?.(null)} actionLabel={t("home.viewAll")} />
+            <View style={[styles.topRow, { gap: grid.gap }]}> 
+              {topProducts.map((product, index) => (
                 <CatalogProductCard
-                  key={product.id}
+                  key={product?.id ?? `top-${index}`}
                   product={product}
-                  compact
-                  featured
+                  cardWidth={grid.cardWidth}
                   onOpenProduct={onOpenProduct}
                 />
               ))}
             </View>
-            <CatalogSectionHeader title="Popular Right Now" actionLabel="" />
-            <View style={styles.grid}>
-              {moreProducts.map((product) => (
-                <CatalogProductCard key={product.id} product={product} compact onOpenProduct={onOpenProduct} />
+            <CatalogSectionHeader title={t("home.popular")} actionLabel="" />
+            <View style={[styles.grid, { gap: grid.gap }]}> 
+              {moreProducts.map((product, index) => (
+                <CatalogProductCard key={product?.id ?? `more-${index}`} product={product} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />
               ))}
             </View>
           </View>
@@ -99,12 +127,14 @@ const getStyles = (colors) =>
     },
     topRow: {
       flexDirection: "row",
-      justifyContent: "space-between",
+      flexWrap: "wrap",
       marginBottom: 22,
     },
     grid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      justifyContent: "space-between",
     },
+    emptyCard: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 20, padding: 20, marginBottom: 20 },
+    emptyTitle: { color: colors.textPrimary, fontSize: 18, fontWeight: "800", marginBottom: 6 },
+    emptyText: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
   });

@@ -1,15 +1,17 @@
-import { Feather } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { useTheme } from "../../../theme/ThemeProvider";
 
 export default function ProductConfigQuantityControl({ quantity, moq, onChange }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
 
   return (
     <View style={styles.section}>
-      <Text style={styles.title}>Quantity</Text>
+      <Text style={styles.title}>{t("catalog.quantity")}</Text>
       <View style={styles.row}>
         <Pressable style={styles.stepButton} onPress={() => onChange?.(String(Math.max(1, quantity - 1)))}>
           <Feather name="minus" size={18} color={colors.textPrimary} />
@@ -24,7 +26,7 @@ export default function ProductConfigQuantityControl({ quantity, moq, onChange }
           <Feather name="plus" size={18} color={colors.textPrimary} />
         </Pressable>
       </View>
-      <Text style={styles.helper}>Minimum order quantity: {moq}</Text>
+      <Text style={styles.helper}>{t("catalog.repeatPackHelp", { count: moq })}</Text>
     </View>
   );
 }

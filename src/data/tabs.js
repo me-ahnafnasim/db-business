@@ -7,9 +7,9 @@ export const TAB_KEYS = {
 };
 
 export const tabs = [
-  { key: TAB_KEYS.HOME, label: "Home" },
-  { key: TAB_KEYS.CATEGORIES, label: "Categories" },
-  { key: TAB_KEYS.SEARCH, label: "Search" },
-  { key: TAB_KEYS.CART, label: "Cart" },
-  { key: TAB_KEYS.PROFILE, label: "Profile" },
+  { key: TAB_KEYS.HOME, labelKey: "tabs.home" },
+  { key: TAB_KEYS.CATEGORIES, labelKey: "tabs.categories" },
+  { key: TAB_KEYS.SEARCH, labelKey: "tabs.search" },
+  { key: TAB_KEYS.CART, labelKey: "tabs.cart" },
+  { key: TAB_KEYS.PROFILE, labelKey: "tabs.profile" },
 ];

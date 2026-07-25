@@ -1,39 +1,40 @@
 import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { useTheme } from "../../../theme/ThemeProvider";
+import { useLanguage } from "../../../i18n/LanguageProvider";
+import { formatBdt } from "../../../utils/money";
 
 export default function ProductConfigPriceSummary({
   basePrice,
+  originalBasePrice,
   sizeSurcharge,
   logoSurcharge,
   quantity,
   totalPrice,
 }) {
   const { colors } = useTheme();
+  const { language } = useLanguage();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
 
   return (
     <View style={styles.card}>
       <View style={styles.row}>
-        <Text style={styles.label}>Base price</Text>
-        <Text style={styles.value}>${basePrice.toFixed(2)}</Text>
+        <Text style={styles.label}>{t("catalog.basePrice")}</Text>
+        <View style={styles.priceValues}>
+          {originalBasePrice > basePrice ? <Text style={styles.originalValue}>{formatBdt(originalBasePrice, language)}</Text> : null}
+          <Text style={styles.value}>{formatBdt(basePrice, language)}</Text>
+        </View>
       </View>
       <View style={styles.row}>
-        <Text style={styles.label}>Size add-on</Text>
-        <Text style={styles.value}>${sizeSurcharge.toFixed(2)}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Logo add-on</Text>
-        <Text style={styles.value}>${logoSurcharge.toFixed(2)}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Quantity</Text>
-        <Text style={styles.value}>{quantity}</Text>
+        <Text style={styles.label}>{t("catalog.quantity")}</Text>
+        <Text style={styles.value}>{t("catalog.moq", { count: quantity })}</Text>
       </View>
       <View style={styles.divider} />
       <View style={styles.row}>
-        <Text style={styles.totalLabel}>Total</Text>
-        <Text style={styles.totalValue}>${totalPrice.toFixed(2)}</Text>
+        <Text style={styles.totalLabel}>{t("catalog.totalPrice")}</Text>
+        <Text style={styles.totalValue}>{formatBdt(totalPrice, language)}</Text>
       </View>
     </View>
   );
@@ -64,6 +65,8 @@ const getStyles = (colors) =>
       fontSize: 13,
       fontWeight: "600",
     },
+    priceValues: { flexDirection: "row", alignItems: "center", gap: 7 },
+    originalValue: { color: colors.textSecondary, fontSize: 12, textDecorationLine: "line-through" },
     divider: {
       height: 1,
       backgroundColor: colors.border,

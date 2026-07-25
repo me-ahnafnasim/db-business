@@ -1,9 +1,14 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
+import { useLanguage } from "../../../i18n/LanguageProvider";
 import { useTheme } from "../../../theme/ThemeProvider";
+import { formatBdt } from "../../../utils/money";
 
 export default function ShippingOptionCard({ option, selected, onPress }) {
   const { colors, isDarkMode } = useTheme();
+  const { language } = useLanguage();
+  const { t } = useTranslation();
   const styles = getStyles(colors, isDarkMode);
 
   return (
@@ -14,12 +19,14 @@ export default function ShippingOptionCard({ option, selected, onPress }) {
         pressed && styles.cardPressed,
       ]}
       onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
     >
       <View>
-        <Text style={[styles.label, selected && styles.labelSelected]}>{option.label}</Text>
-        <Text style={styles.meta}>{option.eta}</Text>
+        <Text style={[styles.label, selected && styles.labelSelected]}>{t(option.labelKey)}</Text>
+        <Text style={styles.meta}>{t(option.descriptionKey)}</Text>
       </View>
-      <Text style={[styles.price, selected && styles.labelSelected]}>${option.price.toFixed(2)}</Text>
+      <Text style={[styles.price, selected && styles.labelSelected]}>{option.price ? formatBdt(option.price, language) : t("common.noCharge")}</Text>
     </Pressable>
   );
 }

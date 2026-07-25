@@ -22,6 +22,8 @@ export default function ProductConfigOptionGroup({
           return (
             <Pressable
               key={option.value}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
               style={({ pressed }) => [
                 styles.option,
                 isSelected && styles.optionSelected,

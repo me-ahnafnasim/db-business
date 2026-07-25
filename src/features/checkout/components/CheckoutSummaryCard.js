@@ -1,14 +1,16 @@
 import { StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { useTheme } from "../../../theme/ThemeProvider";
 
-export default function CheckoutSummaryCard({ title = "Order Summary", rows, total }) {
+export default function CheckoutSummaryCard({ title, rows, total }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title}>{title || t("checkout.orderSummary")}</Text>
       {rows.map((row) => (
         <View key={row.label} style={styles.row}>
           <Text style={styles.label}>{row.label}</Text>

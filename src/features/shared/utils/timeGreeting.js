@@ -1,18 +1,19 @@
-export function getTimeGreeting(date = new Date()) {
-  const hour = date.getHours();
+import { useTranslation } from "react-i18next";
+
+export function getTimeGreeting(t) {
+  const hour = new Date().getHours();
 
   if (hour >= 5 && hour < 12) {
-    return "Good Morning";
+    return t("header.greetingMorning");
   }
 
   if (hour >= 12 && hour < 17) {
-    return "Good Afternoon";
+    return t("header.greetingAfternoon");
   }
 
   if (hour >= 17 && hour < 21) {
-    return "Good Evening";
+    return t("header.greetingEvening");
   }
 
-  return "Good Night";
+  return t("header.greetingNight");
 }
-

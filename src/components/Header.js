@@ -1,19 +1,22 @@
-import { Feather, Ionicons, SimpleLineIcons } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
+import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { getTimeGreeting } from "../features/shared/utils/timeGreeting";
 import { useTheme } from "../theme/ThemeProvider";
 
 export default function Header({ onProfilePress, onSearchPress, onCartPress, cartCount = 0, auth }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
-  const displayName = auth?.isSignedIn ? auth.displayName : "Guest User";
+  const displayName = auth?.isSignedIn ? auth.displayName : t("header.guestUser");
   const avatarText = displayName?.trim()?.charAt(0)?.toUpperCase() || "?";
-  const greeting = `${getTimeGreeting()}👋`;
+  const greeting = `${getTimeGreeting(t)}👋`;
 
   return (
     <View style={styles.container}>
-      <Pressable style={styles.leftSection} onPress={onProfilePress}>
+      <Pressable style={styles.leftSection} onPress={onProfilePress} accessibilityRole="button" accessibilityLabel={t("header.openProfile")}>
         <View style={styles.logoWrap}>
           <Text style={styles.logoText}>{avatarText}</Text>
         </View>
@@ -28,18 +31,17 @@ export default function Header({ onProfilePress, onSearchPress, onCartPress, car
       <View style={styles.actions}>
         <Pressable
           onPress={onSearchPress}
+          accessibilityRole="button"
+          accessibilityLabel={t("header.openSearch")}
           style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
         >
           <Feather name="search" size={20} color={colors.textPrimary} />
         </Pressable>
-        <Pressable style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}>
-          <View style={styles.iconWrap}>
-            <Ionicons name="notifications-outline" size={21} color={colors.textPrimary} />
-          </View>
-        </Pressable>
         <Pressable
           style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}
           onPress={onCartPress}
+          accessibilityRole="button"
+          accessibilityLabel={t("header.openCart", { count: cartCount })}
         >
           <View style={styles.iconWrap}>
           <SimpleLineIcons name="handbag" size={20} color={colors.textPrimary} />
@@ -100,8 +102,8 @@ const getStyles = (colors) =>
   actions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginLeft: 24,
+    gap: 8,
+    marginLeft: 12,
   },
   iconButton: {
     width: 34,

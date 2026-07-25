@@ -1,14 +1,23 @@
-import { Feather, Ionicons, MaterialCommunityIcons, SimpleLineIcons } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { tabs } from "../data/tabs";
+import { useLanguage } from "../i18n/LanguageProvider";
 import { useTheme } from "../theme/ThemeProvider";
 
 export default function BottomNav({ activeTab, onTabPress, cartCount = 0 }) {
   const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const { layout } = useLanguage();
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const styles = getStyles(colors, layout);
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: Math.max(10, insets.bottom) }]}>
       {tabs.map((tab) => {
         const active = tab.key === activeTab;
 
@@ -17,6 +26,9 @@ export default function BottomNav({ activeTab, onTabPress, cartCount = 0 }) {
             key={tab.key}
             style={styles.tab}
             onPress={() => onTabPress?.(tab.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={t(tab.labelKey)}
           >
             {({ pressed }) => {
               const iconColor = active || pressed ? colors.white : colors.tabInactive;
@@ -43,7 +55,9 @@ export default function BottomNav({ activeTab, onTabPress, cartCount = 0 }) {
                       </View>
                     ) : null}
                   </View>
-                  <Text style={[styles.label, active && styles.activeLabel]}>{tab.label}</Text>
+                  <Text style={[styles.label, active && styles.activeLabel]} numberOfLines={1}>
+                    {t(tab.labelKey)}
+                  </Text>
                 </>
               );
             }}
@@ -54,7 +68,7 @@ export default function BottomNav({ activeTab, onTabPress, cartCount = 0 }) {
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = (colors, layout) =>
   StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
@@ -68,9 +82,10 @@ const getStyles = (colors) =>
   tab: {
     alignItems: "center",
     gap: 6,
-    minWidth: 58,
-    paddingHorizontal: 10,
+    minWidth: layout.tabMinWidth,
+    paddingHorizontal: 8,
     paddingVertical: 6,
+    flex: 1,
   },
   iconWrap: {
     position: "relative",
@@ -94,8 +109,10 @@ const getStyles = (colors) =>
   },
   label: {
     color: colors.tabInactive,
-    fontSize: 15,
+    fontSize: layout.tabFontSize,
     fontWeight: "500",
+    flexShrink: 1,
+    textAlign: "center",
   },
   activeLabel: {
     color: colors.tabActive,

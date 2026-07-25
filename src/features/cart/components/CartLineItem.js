@@ -1,42 +1,55 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import Feather from "@expo/vector-icons/Feather";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslation } from "react-i18next";
 
+import { useLanguage } from "../../../i18n/LanguageProvider";
+import { getLocalizedProduct } from "../../../i18n/product";
 import { useTheme } from "../../../theme/ThemeProvider";
+import { formatBdt } from "../../../utils/money";
+import ProductImage from "../../catalog/components/ProductImage";
 
 export default function CartLineItem({ item, onIncrease, onDecrease, onRemove }) {
   const { colors } = useTheme();
+  const { language } = useLanguage();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
+  const localizedItem = getLocalizedProduct(item, language);
 
   return (
     <View style={styles.cartCard}>
-      <Image source={{ uri: item.image }} style={styles.productImage} />
+      <ProductImage uri={item.image} accessibilityLabel={localizedItem.name} style={styles.productImage} borderRadius={16} />
       <View style={styles.productInfo}>
         <Text numberOfLines={2} style={styles.productName}>
-          {item.name}
+          {localizedItem.name}
         </Text>
-        <Text style={styles.productMeta}>
-          {item.selectedColor ? `Color: ${item.selectedColor}` : ""}
-          {item.selectedColor && item.selectedSize ? "  •  " : ""}
-          {item.selectedSize ? `Size: ${item.selectedSize}` : ""}
-        </Text>
-        {item.hasCustomLogo ? (
-          <Text style={styles.productMeta}>Logo: {item.logoFileName || "Attached"}</Text>
-        ) : null}
-        <Text style={styles.productPrice}>${((item.unitPrice ?? item.price) * item.quantity).toFixed(2)}</Text>
+        <Text style={styles.productMeta}>{t("cart.packRecipe")}</Text>
+        {(item.allocations || []).map((allocation) => (
+          <Text key={allocation.productVariantId} style={styles.allocationText}>
+            {allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}
+          </Text>
+        ))}
+        {!item.moqSatisfied ? <Text style={styles.moqWarning}>{t("cart.moqRemaining", { count: item.moqRemaining })}</Text> : null}
+        {!item.configurationValid ? <Text style={styles.moqWarning}>{t("cart.packInvalid")}</Text> : null}
+        {item.discountPercent ? <Text style={styles.originalPrice}>{formatBdt((item.unitPrice ?? item.price) * item.quantity, language)}</Text> : null}
+        <Text style={styles.productPrice}>{formatBdt((item.discountedUnitPrice ?? item.unitPrice ?? item.price) * item.quantity, language)}</Text>
+        <Text style={styles.productMeta}>{t("cart.quantityUnit")}</Text>
         <View style={styles.controlsRow}>
           <Pressable
-            style={[styles.qtyButton, item.quantity <= item.moq && styles.qtyButtonDisabled]}
+            style={[styles.qtyButton, item.quantity <= 1 && styles.qtyButtonDisabled]}
             onPress={onDecrease}
+            accessibilityRole="button"
+            accessibilityLabel={t("cart.decrease", { name: localizedItem.name })}
           >
             <Feather name="minus" size={22} color={colors.textSecondary} />
           </Pressable>
           <Text style={styles.quantityText}>{item.quantity}</Text>
-          <Pressable style={styles.qtyButtonActive} onPress={onIncrease}>
+          <Pressable style={styles.qtyButtonActive} onPress={onIncrease} accessibilityRole="button" accessibilityLabel={t("cart.increase", { name: localizedItem.name })}>
             <Feather name="plus" size={22} color={colors.black} />
           </Pressable>
         </View>
       </View>
-      <Pressable style={styles.deleteButton} onPress={onRemove}>
+      <Pressable style={styles.deleteButton} onPress={onRemove} accessibilityRole="button" accessibilityLabel={t("cart.removeItem", { name: localizedItem.name })}>
         <Ionicons name="trash-outline" size={28} color={colors.accent} />
       </Pressable>
     </View>
@@ -62,18 +75,16 @@ const getStyles = (colors) =>
       shadowOffset: { width: 0, height: 8 },
     },
     productImage: {
-      width: 96,
-      height: 96,
-      borderRadius: 22,
-      backgroundColor: colors.surfaceSoft,
+      width: 82,
+      height: 82,
     },
     productInfo: {
       flex: 1,
-      paddingRight: 44,
+      paddingRight: 34,
     },
     productName: {
       color: colors.textPrimary,
-      fontSize: 18,
+      fontSize: 16,
       fontWeight: "700",
       lineHeight: 24,
       marginBottom: 6,
@@ -83,6 +94,8 @@ const getStyles = (colors) =>
       fontSize: 12,
       lineHeight: 18,
     },
+    allocationText: { color: colors.textSecondary, fontSize: 11, lineHeight: 16 },
+    moqWarning: { color: colors.accent, fontSize: 11, fontWeight: "700", marginTop: 4 },
     productPrice: {
       color: colors.textPrimary,
       fontSize: 19,
@@ -90,15 +103,16 @@ const getStyles = (colors) =>
       marginBottom: 12,
       marginTop: 4,
     },
+    originalPrice: { color: colors.textSecondary, fontSize: 12, textDecorationLine: "line-through", marginTop: 4 },
     controlsRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 14,
     },
     qtyButton: {
-      width: 46,
-      height: 46,
-      borderRadius: 23,
+      width: 42,
+      height: 42,
+      borderRadius: 21,
       borderWidth: 1,
       borderColor: colors.border,
       alignItems: "center",
@@ -109,9 +123,9 @@ const getStyles = (colors) =>
       opacity: 0.45,
     },
     qtyButtonActive: {
-      width: 46,
-      height: 46,
-      borderRadius: 23,
+      width: 42,
+      height: 42,
+      borderRadius: 21,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: colors.white,

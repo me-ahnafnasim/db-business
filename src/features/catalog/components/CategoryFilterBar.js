@@ -1,9 +1,11 @@
 import { ScrollView, Pressable, StyleSheet, Text } from "react-native";
+import { useTranslation } from "react-i18next";
 
 import { useTheme } from "../../../theme/ThemeProvider";
 
 export default function CategoryFilterBar({ categories, activeCategoryId, onSelectCategory }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = getStyles(colors);
 
   return (
@@ -12,7 +14,7 @@ export default function CategoryFilterBar({ categories, activeCategoryId, onSele
         style={[styles.chip, !activeCategoryId && styles.activeChip]}
         onPress={() => onSelectCategory?.(null)}
       >
-        <Text style={[styles.chipText, !activeCategoryId && styles.activeChipText]}>All</Text>
+        <Text style={[styles.chipText, !activeCategoryId && styles.activeChipText]}>{t("catalog.all")}</Text>
       </Pressable>
       {categories.map((category) => {
         const active = category.id === activeCategoryId;
@@ -28,7 +30,7 @@ export default function CategoryFilterBar({ categories, activeCategoryId, onSele
               numberOfLines={1}
               ellipsizeMode="tail"
             >
-              {category.name}
+              {category.nameKey ? t(category.nameKey) : category.name}
             </Text>
           </Pressable>
         );

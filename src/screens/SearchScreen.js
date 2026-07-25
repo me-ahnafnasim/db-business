@@ -1,11 +1,13 @@
-import { Feather } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
 import { FlatList, StyleSheet, Text, TextInput, View } from "react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import ScreenShell from "../components/ScreenShell";
 import CatalogProductCard from "../features/catalog/components/CatalogProductCard";
 import { getFilteredProducts } from "../features/catalog/utils/catalogSelectors";
 import { TAB_KEYS } from "../data/tabs";
+import { useResponsiveGrid } from "../hooks/useResponsiveGrid";
 import { useTheme } from "../theme/ThemeProvider";
 
 export default function SearchScreen({
@@ -20,13 +22,15 @@ export default function SearchScreen({
   auth,
 }) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
+  const grid = useResponsiveGrid();
   const styles = getStyles(colors);
   const [query, setQuery] = useState("");
   const inputRef = useRef(null);
   const results = useMemo(() => getFilteredProducts(catalog.categories, query), [catalog.categories, query]);
   const renderProduct = useCallback(
-    ({ item }) => <CatalogProductCard product={item} compact onOpenProduct={onOpenProduct} />,
-    [onOpenProduct]
+    ({ item }) => <CatalogProductCard product={item} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />,
+    [grid.cardWidth, onOpenProduct]
   );
 
   useEffect(() => {
@@ -50,8 +54,8 @@ export default function SearchScreen({
       onCartPress={onCartPress}
       cartCount={cartCount}
       auth={auth}
-      title="Search"
-      subtitle="Search by name, SKU, or category"
+      title={t("search.title")}
+      subtitle={t("search.subtitle")}
       scrollable={false}
     >
       <View style={styles.content}>
@@ -59,22 +63,23 @@ export default function SearchScreen({
           <Feather name="search" size={22} color={colors.textSecondary} />
           <TextInput
             ref={inputRef}
-            placeholder="Search products"
+            placeholder={t("search.placeholder")}
             placeholderTextColor={colors.textSecondary}
             style={styles.input}
             value={query}
             onChangeText={setQuery}
           />
         </View>
-        <Text style={styles.resultText}>{results.length} matching products</Text>
+        <Text style={styles.resultText}>{t("search.results", { count: results.length })}</Text>
         <FlatList
           data={results}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
+          keyExtractor={(item, index) => item?.id ?? String(index)}
+          key={`search-${grid.columns}`}
+          numColumns={grid.columns}
+          columnWrapperStyle={grid.columns > 1 ? [styles.row, { gap: grid.gap }] : undefined}
           contentContainerStyle={styles.list}
           renderItem={renderProduct}
-          ListEmptyComponent={<Text style={styles.emptyText}>No products match your search.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>{t("search.empty")}</Text>}
           initialNumToRender={8}
           maxToRenderPerBatch={8}
           windowSize={5}
@@ -117,7 +122,7 @@ const getStyles = (colors) =>
       paddingBottom: 24,
     },
     row: {
-      justifyContent: "space-between",
+      alignItems: "stretch",
     },
     emptyText: {
       color: colors.textSecondary,

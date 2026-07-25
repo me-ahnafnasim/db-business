@@ -2,21 +2,15 @@ export const PAYMENT_OPTIONS = [
   {
     id: "cod",
     label: "Cash on Delivery",
+    labelKey: "checkout.cod",
+    descriptionKey: "checkout.codDescription",
     description: "Pay when the order arrives",
-  },
-  {
-    id: "card",
-    label: "Card",
-    description: "Mock card payment selection",
   },
   {
     id: "bank",
     label: "Bank Transfer",
-    description: "Transfer after placing the order",
-  },
-  {
-    id: "wallet",
-    label: "Wallet",
-    description: "Use your internal wallet balance",
+    labelKey: "checkout.bank",
+    descriptionKey: "checkout.bankDescription",
+    description: "Receive transfer instructions after ordering",
   },
 ];

@@ -1,16 +1,27 @@
 {
   "expo": {
-    "name": "React Native Starter",
+    "name": "NoboSole",
     "slug": "react-native-starter",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "nobosole",
+    "android": {
+      "package": "com.nobosole.mobile"
+    },
     "userInterfaceStyle": "light",
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0a0e27"
     },
     "assetBundlePatterns": [
       "**/*"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "58f02bfb-4a4b-45c3-ab1f-f85b104c9540"
+      }
+    },
+    "owner": "nasimx",
+    "plugins": ["@react-native-google-signin/google-signin"]
   }
 }
