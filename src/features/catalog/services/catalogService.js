@@ -28,6 +28,12 @@ export function mapApiProduct(product, index = 0, festivalCampaign = null) {
       return Number(left.sortOrder || 0) - Number(right.sortOrder || 0);
     });
   const primaryImage = images[0]?.imageUrl || FALLBACK_IMAGE;
+  const availability = (product.availability || []).map((item) => ({
+    colorCode: item.colorCode,
+    sizeCodes: item.sizeCodes.filter((sizeCode) => (
+      variants.some((variant) => variant.colorCode === item.colorCode && variant.sizeCode === sizeCode)
+    )),
+  })).filter((item) => item.sizeCodes.length);
 
   return {
     id: String(product.id),
@@ -50,8 +56,9 @@ export function mapApiProduct(product, index = 0, festivalCampaign = null) {
     featuredRank: index + 1,
     isActive: product.isActive,
     variants,
-    availableColors: (product.colorCodes || []).map((value) => ({ label: value, value })),
-    availableSizes: (product.sizeCodes || []).map((value) => ({ label: value, value })),
+    availability,
+    availableColors: availability.map((item) => ({ label: item.colorCode, value: item.colorCode })),
+    availableSizes: uniqueOptions(variants, "sizeCode"),
     logoUploadEnabled: false,
   };
 }

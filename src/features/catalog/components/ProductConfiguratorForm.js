@@ -13,7 +13,7 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
   const { t } = useTranslation();
   const styles = getStyles(colors, isDarkMode);
   const firstColor = product.availableColors[0]?.value;
-  const firstSize = product.availableSizes[0]?.value;
+  const firstSize = product.availability.find((item) => item.colorCode === firstColor)?.sizeCodes[0];
   const [selectedColors, setSelectedColors] = useState(firstColor ? [firstColor] : []);
   const [selectedSizes, setSelectedSizes] = useState(firstSize ? [firstSize] : []);
   const [pairCounts, setPairCounts] = useState(firstColor && firstSize ? { [cellKey(firstColor, firstSize)]: "12" } : {});
@@ -24,6 +24,13 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
     () => new Map(product.variants.map((variant) => [cellKey(variant.colorCode, variant.sizeCode), variant])),
     [product.variants]
   );
+  const availableSizes = useMemo(() => {
+    const selected = new Set(selectedColors);
+    const sizes = product.availability
+      .filter((item) => selected.has(item.colorCode))
+      .flatMap((item) => item.sizeCodes);
+    return [...new Set(sizes)].sort().map((value) => ({ label: value, value }));
+  }, [product.availability, selectedColors]);
   const allocations = [];
   let pairsPerDozen = 0;
   let stockError = false;
@@ -47,18 +54,37 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
   const totalPrice = price * quantity;
   const canSubmit = allocations.length > 0 && !error;
 
-  const toggleOption = (value, selected, setSelected, maximum, dimension) => {
-    if (selected.includes(value)) {
-      if (selected.length === 1) return;
-      setSelected(selected.filter((item) => item !== value));
-      setPairCounts((current) => Object.fromEntries(Object.entries(current).filter(([key]) => {
-        const [color, size] = key.split(":");
-        return dimension === "color" ? color !== value : size !== value;
-      })));
+  const toggleSize = (value) => {
+    if (selectedSizes.includes(value)) {
+      if (selectedSizes.length === 1) return;
+      setSelectedSizes(selectedSizes.filter((item) => item !== value));
+      setPairCounts((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key.split(":")[1] !== value)));
       return;
     }
-    if (selected.length >= maximum) return;
-    setSelected([...selected, value]);
+    if (selectedSizes.length >= product.maxSizesPerDozen) return;
+    setSelectedSizes([...selectedSizes, value]);
+  };
+
+  const toggleColor = (value) => {
+    let nextColors;
+    if (selectedColors.includes(value)) {
+      if (selectedColors.length === 1) return;
+      nextColors = selectedColors.filter((item) => item !== value);
+      setPairCounts((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key.split(":")[0] !== value)));
+    } else {
+      if (selectedColors.length >= product.maxColorsPerDozen) return;
+      nextColors = [...selectedColors, value];
+    }
+    const nextAvailableSizes = new Set(product.availability
+      .filter((item) => nextColors.includes(item.colorCode))
+      .flatMap((item) => item.sizeCodes));
+    const retainedSizes = selectedSizes.filter((size) => nextAvailableSizes.has(size));
+    setSelectedColors(nextColors);
+    setSelectedSizes(retainedSizes.length ? retainedSizes : [...nextAvailableSizes].slice(0, 1));
+    setPairCounts((current) => Object.fromEntries(Object.entries(current).filter(([key]) => {
+      const [color, size] = key.split(":");
+      return nextColors.includes(color) && nextAvailableSizes.has(size);
+    })));
   };
 
   return (
@@ -67,15 +93,15 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
       <View style={styles.optionWrap}>
         {product.availableColors.map((option) => {
           const active = selectedColors.includes(option.value);
-          return <Pressable key={option.value} style={[styles.option, active && styles.optionActive]} onPress={() => toggleOption(option.value, selectedColors, setSelectedColors, product.maxColorsPerDozen, "color")}><Text style={[styles.optionText, active && styles.optionTextActive]}>{option.label}</Text></Pressable>;
+          return <Pressable key={option.value} style={[styles.option, active && styles.optionActive]} onPress={() => toggleColor(option.value)}><Text style={[styles.optionText, active && styles.optionTextActive]}>{option.label}</Text></Pressable>;
         })}
       </View>
 
       <Text style={styles.sectionTitle}>{t("catalog.selectPackSizes", { count: product.maxSizesPerDozen })}</Text>
       <View style={styles.optionWrap}>
-        {product.availableSizes.map((option) => {
+        {availableSizes.map((option) => {
           const active = selectedSizes.includes(option.value);
-          return <Pressable key={option.value} style={[styles.option, active && styles.optionActive]} onPress={() => toggleOption(option.value, selectedSizes, setSelectedSizes, product.maxSizesPerDozen, "size")}><Text style={[styles.optionText, active && styles.optionTextActive]}>{option.label}</Text></Pressable>;
+          return <Pressable key={option.value} style={[styles.option, active && styles.optionActive]} onPress={() => toggleSize(option.value)}><Text style={[styles.optionText, active && styles.optionTextActive]}>{option.label}</Text></Pressable>;
         })}
       </View>
 
@@ -85,7 +111,7 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
           <View key={color} style={styles.colorGroup}>
             <Text style={styles.colorTitle}>{color}</Text>
             <View style={styles.matrix}>
-              {selectedSizes.map((size) => {
+              {selectedSizes.filter((size) => variantByCell.has(cellKey(color, size))).map((size) => {
                 const key = cellKey(color, size);
                 const variant = variantByCell.get(key);
                 return <View key={size} style={styles.cell}><Text style={styles.cellLabel}>{t("catalog.size")} {size}</Text><TextInput editable={Boolean(variant)} value={pairCounts[key] || ""} onChangeText={(value) => setPairCounts((current) => ({ ...current, [key]: value.replace(/[^0-9]/g, "").slice(0, 2) }))} keyboardType="number-pad" placeholder="0" placeholderTextColor={colors.textSecondary} style={[styles.cellInput, !variant && styles.cellDisabled]}/><Text style={styles.stockText}>{variant ? t("catalog.pairsInStock", { count: variant.stockQuantityPairs }) : t("catalog.unavailable")}</Text></View>;
