@@ -79,7 +79,7 @@ export default function OrdersScreen({ onBack }) {
           {(order.items || []).map((item) => (
             <View key={String(item.id)} style={styles.pack}>
               <Text style={styles.packTitle}>{item.productName} · {item.quantityDozen} {t("catalog.perDozen")}</Text>
-              {(item.allocations || []).map((allocation) => <Text key={String(allocation.productVariantId)} style={styles.meta}>{allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}</Text>)}
+              {(item.allocations || []).map((allocation) => <Text key={String(allocation.productVariantId)} style={styles.meta}>{language === 'bn' && item.colorNames?.[allocation.colorCode]?.bn || allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}</Text>)}
             </View>
           ))}
           <Text style={styles.total}>{formatBdt(paisaToBdt(order.grandTotalPaisa), language)}</Text>

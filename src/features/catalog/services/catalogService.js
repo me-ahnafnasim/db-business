@@ -52,9 +52,10 @@ export function mapApiProduct(product, index = 0, festivalCampaign = null) {
     categoryName: "All Products",
     featuredRank: index + 1,
     isActive: product.isActive,
+    colorNames: product.colorNames || {},
     variants,
     availability,
-    availableColors: availability.map((item) => ({ label: item.colorCode, value: item.colorCode })),
+    availableColors: availability.map((item) => ({ label: item.colorCode, value: item.colorCode, colorNameBn: (product.colorNames || {})[item.colorCode]?.bn || '' })),
     availableSizes: uniqueOptions(variants, "sizeCode"),
     logoUploadEnabled: false,
   };

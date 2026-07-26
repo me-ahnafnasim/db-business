@@ -45,6 +45,7 @@ export function mapApiCart(cart, catalog, festivalCampaign = null) {
       moq: Number(apiProduct.minimumOrderDozen || 1),
       moqSatisfied: cart.moq?.find((entry) => String(entry.productId) === String(apiProduct.id))?.satisfied ?? true,
       moqRemaining: cart.moq?.find((entry) => String(entry.productId) === String(apiProduct.id))?.remainingDozen ?? 0,
+      colorNames: apiProduct.colorNames || {},
       unitLabel: "dozen",
       selectedColor: "",
       selectedSize: "",

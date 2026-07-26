@@ -26,7 +26,7 @@ export default function CartLineItem({ item, onIncrease, onDecrease, onRemove })
         <Text style={styles.productMeta}>{t("cart.packRecipe")}</Text>
         {(item.allocations || []).map((allocation) => (
           <Text key={allocation.productVariantId} style={styles.allocationText}>
-            {allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}
+            {language === 'bn' && item.product?.colorNames?.[allocation.colorCode]?.bn || allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}
           </Text>
         ))}
         {!item.moqSatisfied ? <Text style={styles.moqWarning}>{t("cart.moqRemaining", { count: item.moqRemaining })}</Text> : null}

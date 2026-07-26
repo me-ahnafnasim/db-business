@@ -1,12 +1,14 @@
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLanguage } from "../../../i18n/LanguageProvider";
 import { useTheme } from "../../../theme/ThemeProvider";
 import ProductConfigPriceSummary from "./ProductConfigPriceSummary";
 import ProductConfigQuantityControl from "./ProductConfigQuantityControl";
 
 export default function ProductConfiguratorForm({ product, onAddToCart }) {
   const { colors, isDarkMode } = useTheme();
+  const { language } = useLanguage();
   const { t } = useTranslation();
   const styles = getStyles(colors, isDarkMode);
   const firstColor = product.availableColors[0]?.value;
@@ -125,9 +127,9 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
         {product.availableColors.map((option) => {
           const active = selectedColors.includes(option.value);
           return (
-            <Pressable key={option.value} style={[styles.option, active && styles.optionActive]}
-              onPress={() => toggleColor(option.value)}>
-              <Text style={[styles.optionText, active && styles.optionTextActive]}>{option.label}</Text>
+              <Pressable key={option.value} style={[styles.option, active && styles.optionActive]}
+                onPress={() => toggleColor(option.value)}>
+                <Text style={[styles.optionText, active && styles.optionTextActive]}>{language === 'bn' && option.colorNameBn ? option.colorNameBn : option.label}</Text>
             </Pressable>
           );
         })}

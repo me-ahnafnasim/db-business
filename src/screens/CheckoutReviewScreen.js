@@ -43,7 +43,7 @@ export default function CheckoutReviewScreen({
             <View style={styles.rowText}>
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={styles.itemMeta}>{t("catalog.quantity")} {item.quantity} {t("catalog.perDozen")}</Text>
-              {(item.allocations || []).map((allocation) => <Text key={allocation.productVariantId} style={styles.itemMeta}>{allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}</Text>)}
+              {(item.allocations || []).map((allocation) => <Text key={allocation.productVariantId} style={styles.itemMeta}>{language === 'bn' && item.colorNames?.[allocation.colorCode]?.bn || allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}</Text>)}
             </View>
             <Text style={styles.itemPrice}>{formatBdt((item.unitPrice ?? item.price) * item.quantity, language)}</Text>
           </View>

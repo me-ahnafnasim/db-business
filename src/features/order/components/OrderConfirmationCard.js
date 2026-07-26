@@ -34,7 +34,7 @@ export default function OrderConfirmationCard({ order, onTrackOrder, onContinueS
       {(order.packs || []).map((pack) => (
         <View key={pack.lineId || pack.id} style={styles.pack}>
           <Text style={styles.packTitle}>{pack.name} · {pack.quantity} {t("catalog.perDozen")}</Text>
-          {(pack.allocations || []).map((allocation) => <Text key={allocation.productVariantId} style={styles.packMeta}>{allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}</Text>)}
+          {(pack.allocations || []).map((allocation) => <Text key={allocation.productVariantId} style={styles.packMeta}>{language === 'bn' && pack.colorNames?.[allocation.colorCode]?.bn || allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}</Text>)}
         </View>
       ))}
       <View style={styles.row}>
