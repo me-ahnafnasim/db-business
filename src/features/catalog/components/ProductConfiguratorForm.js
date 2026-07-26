@@ -90,20 +90,24 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
   const canSubmit = selectedColors.length >= quantity && selectedSizes.length > 0 && !error;
 
   const handleAdd = () => {
-    const items = selectedColors.map((color) => {
-      const sizeList = selectedSizes.filter((size) => variantByCell.has(`${color}:${size}`));
-      const perDozenValues = sizeList.map((size) => Math.floor(Number(pairCounts[size] || 0) / quantity));
-      const baseSum = perDozenValues.reduce((a, b) => a + b, 0);
-      let remainder = 12 - baseSum;
-      const allocations = sizeList.map((size, i) => {
+    const flatAllocations = [];
+    let baseTotal = 0;
+    for (const color of selectedColors) {
+      for (const size of selectedSizes) {
         const variant = variantByCell.get(`${color}:${size}`);
-        const extra = remainder > 0 ? 1 : 0;
-        remainder--;
-        return { productVariantId: Number(variant.id), pairsPerDozen: perDozenValues[i] + extra };
-      });
-      return { product, allocations, quantity: 1 };
-    });
-    onAddToCart(items);
+        if (!variant) continue;
+        const pd = Math.floor(Number(pairCounts[size] || 0) / quantity);
+        flatAllocations.push({ productVariantId: Number(variant.id), pairsPerDozen: pd });
+        baseTotal += pd;
+      }
+    }
+    let remainder = 12 * quantity - baseTotal;
+    for (const a of flatAllocations) {
+      if (remainder <= 0) break;
+      a.pairsPerDozen++;
+      remainder--;
+    }
+    onAddToCart([{ product, allocations: flatAllocations, quantity }]);
   };
 
   return (
