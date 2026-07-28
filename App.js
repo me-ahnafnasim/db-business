@@ -11,6 +11,7 @@ import LaunchScreen from "./src/screens/LaunchScreen";
 import MainTabs from "./src/screens/MainTabs";
 import ProfileCompletionScreen from "./src/screens/ProfileCompletionScreen";
 import { ThemeProvider } from "./src/theme/ThemeProvider";
+import ErrorBoundary from "./src/ui/ErrorBoundary";
 
 function AppContent() {
   const { status, user, error, signIn, signOut, completeProfile } = useAuth();
@@ -44,14 +45,16 @@ function AppContent() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <LanguageProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <AuthProvider>
           <ThemeProvider>
-            <AppContent />
+            <LanguageProvider>
+              <AppContent />
+            </LanguageProvider>
           </ThemeProvider>
-        </LanguageProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }

@@ -3,8 +3,20 @@ node_modules
 .env.local
 .env.*.local
 
+# Build output. These are currently still tracked from earlier commits — untrack with:
+#   git rm -r --cached dist temp-export-*
+# They never enter the APK (Metro bundles by reachability), but they are ~14 MB of the
+# repository and are blocked from the Metro crawl in metro.config.js.
+dist/
+temp-export-*/
+
 # OAuth secrets must never be included in the frontend repository or APK.
 **/client_secret_*.json
+**/play-service-account*.json
+**/google-play-service-account*.json
+**/pc-api-*.json
+*.keystore
+*.jks
 
 # Firebase client configuration is public build metadata. Keep the verified
 # Android file in the repository so local and EAS builds use the same clients.

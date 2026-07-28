@@ -9,20 +9,32 @@ export const supportItems = [
     icon: "headphones",
     labelKey: "profile.customerService",
   },
+];
+
+export const legalItems = [
   {
-    key: "blog",
+    key: "privacy",
+    icon: "shield",
+    labelKey: "profile.privacyPolicy",
+  },
+  {
+    key: "terms",
     icon: "file-text",
-    labelKey: "profile.blog",
+    labelKey: "profile.terms",
+  },
+  {
+    key: "returns",
+    icon: "rotate-ccw",
+    labelKey: "profile.returnsPolicy",
+  },
+  {
+    key: "delete-account",
+    icon: "trash-2",
+    labelKey: "profile.deleteAccount",
   },
 ];
 
 export const settingsItems = [
-  {
-    key: "currency",
-    icon: "dollar-sign",
-    labelKey: "profile.currency",
-    staticValue: "BDT",
-  },
   {
     key: "language",
     icon: "globe",

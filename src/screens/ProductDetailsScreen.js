@@ -3,7 +3,15 @@ import ProductConfiguratorForm from "../features/catalog/components/ProductConfi
 import ProductSummaryCard from "../features/catalog/components/ProductSummaryCard";
 import { useTranslation } from "react-i18next";
 
-export default function ProductDetailsScreen({ product, onBack, onAddConfiguredProduct }) {
+// Doubles as the cart's edit screen: when `editingLine` is set the configurator opens
+// pre-filled with that line's pack, and saving replaces it rather than adding a new one.
+export default function ProductDetailsScreen({
+  product,
+  onBack,
+  onAddConfiguredProduct,
+  initialConfig,
+  editingLine,
+}) {
   const { t } = useTranslation();
   if (!product) {
     return null;
@@ -16,7 +24,12 @@ export default function ProductDetailsScreen({ product, onBack, onAddConfiguredP
       onBack={onBack}
     >
       <ProductSummaryCard product={product} />
-      <ProductConfiguratorForm product={product} onAddToCart={onAddConfiguredProduct} />
+      <ProductConfiguratorForm
+        product={product}
+        initialConfig={initialConfig}
+        submitLabel={editingLine ? t("product_configurator.save_changes") : undefined}
+        onAddToCart={(configs) => onAddConfiguredProduct(configs, editingLine)}
+      />
     </StackScreenShell>
   );
 }

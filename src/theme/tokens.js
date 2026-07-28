@@ -62,6 +62,9 @@ export const duration = Object.freeze({
   fast: 120,
   base: 200,
   slow: 320,
+  // Deliberately outside the interaction scale. `slow` is the ceiling for anything the user
+  // is waiting on; this is for a one-shot flourish they are meant to watch, not sit through.
+  celebrate: 900,
 });
 
 // Elevation is reserved for genuinely floating surfaces (nav bars, sticky footers,

@@ -1,8 +1,9 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import Feather from "@expo/vector-icons/Feather";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
+import { useIsAppForeground } from "../hooks/useIsAppForeground";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { radius, spacing, useStyles, useTheme } from "../theme";
 import { AppText } from "../ui";
@@ -19,18 +20,24 @@ function remainingParts(endsAt) {
   };
 }
 
-export default function FestivalDiscountBanner({ campaign }) {
+export default function FestivalDiscountBanner({ campaign, active = true }) {
   const { colors } = useTheme();
   const { language } = useLanguage();
   const { t } = useTranslation();
   const styles = useStyles(getStyles);
+  const foreground = useIsAppForeground();
   const [time, setTime] = useState(() => remainingParts(campaign?.endsAt));
+  const ticking = active && foreground;
 
+  // This countdown re-rendered twelve text nodes once a second, forever — including while
+  // the Home tab was hidden behind another tab and while the app was backgrounded. It now
+  // only ticks when it is actually on screen, and resyncs the moment it becomes visible.
   useEffect(() => {
     setTime(remainingParts(campaign?.endsAt));
+    if (!ticking) return undefined;
     const timer = setInterval(() => setTime(remainingParts(campaign?.endsAt)), 1000);
     return () => clearInterval(timer);
-  }, [campaign?.endsAt]);
+  }, [campaign?.endsAt, ticking]);
 
   if (!campaign || !time.remaining) return null;
   const bangla = language === "bn";
@@ -46,7 +53,7 @@ export default function FestivalDiscountBanner({ campaign }) {
   return (
     <View style={styles.card}>
       <View style={styles.headingRow}>
-        <MaterialCommunityIcons name="party-popper" size={24} color={colors.onBrand} />
+        <Feather name="gift" size={24} color={colors.onBrand} />
         <View style={styles.headingText}>
           <AppText variant="label" style={styles.festival}>
             {festivalName}

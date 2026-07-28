@@ -1,20 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, AppState, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Alert, AppState, Linking, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { getLocalizedError } from "../i18n/errors";
 import { supabase } from "../config/supabase";
 import { radius, spacing, useStyles, useTheme } from "../theme";
+import { useBackHandler } from "../hooks/useBackHandler";
+import { useExitConfirm } from "../hooks/useExitConfirm";
+import { useNetworkStatus } from "../hooks/useNetworkStatus";
+import OfflineBanner from "../components/OfflineBanner";
 import { AppText, Button } from "../ui";
 
 import { TAB_KEYS } from "../data/tabs";
 import { PAYMENT_OPTIONS } from "../features/checkout/data/paymentOptions";
 import { SHIPPING_OPTIONS } from "../features/checkout/data/shippingOptions";
-import { fetchCatalog } from "../features/catalog/services/catalogService";
+import { buildCatalog, fetchCatalogRaw } from "../features/catalog/services/catalogService";
 import {
   addConfiguredItem,
-  changeCartItem,
+  catalogProductFor,
+  configFromCartLine,
   deleteCartItem,
-  fetchCart,
+  fetchCartRaw,
+  mapApiCart,
+  replaceCartItem,
 } from "../features/cart/services/cartService";
 import { getCheckoutTotals } from "../features/checkout/utils/checkoutPricing";
 import { createOrder, getProfile, getStorefront } from "../services/api";
@@ -24,6 +31,7 @@ import CategoriesScreen from "./CategoriesScreen";
 import CheckoutReviewScreen from "./CheckoutReviewScreen";
 import ExpenseTrackerScreen from "./ExpenseTrackerScreen";
 import HomeScreen from "./HomeScreen";
+import HelpCenterScreen from "./HelpCenterScreen";
 import OrderConfirmationScreen from "./OrderConfirmationScreen";
 import OrdersScreen from "./OrdersScreen";
 import PaymentScreen from "./PaymentScreen";
@@ -33,6 +41,7 @@ import SearchScreen from "./SearchScreen";
 import ShippingScreen from "./ShippingScreen";
 
 const STACK_ROUTES = {
+  SEARCH: "search",
   PRODUCT_DETAILS: "product-details",
   SHIPPING: "shipping",
   PAYMENT: "payment",
@@ -40,7 +49,15 @@ const STACK_ROUTES = {
   ORDER_CONFIRMATION: "order-confirmation",
   ORDERS: "orders",
   EXPENSE_TRACKER: "expense-tracker",
+  HELP_CENTER: "help-center",
 };
+
+// Data older than this is worth refreshing in the background; newer than this, a
+// foreground event or a realtime subscribe is not a reason to re-download the catalog.
+const STALE_AFTER_MS = 60_000;
+// How long the app must actually have been backgrounded before returning counts as a
+// return. Filters out the notification shade, permission dialogs and the sign-in bounce.
+const MIN_BACKGROUND_MS = 5_000;
 
 const DEFAULT_ADDRESS = {
   customerName: "",
@@ -55,10 +72,18 @@ export default function MainTabs({ auth, onSignOut }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useStyles(getStyles);
-  const [activeTab, setActiveTab] = useState(TAB_KEYS.HOME);
+  // Trail of visited tabs, most recent last, with Home pinned at the bottom so back always
+  // terminates there. The active tab is derived rather than stored separately, so the two
+  // cannot drift apart.
+  const [tabHistory, setTabHistory] = useState([TAB_KEYS.HOME]);
+  const activeTab = tabHistory[tabHistory.length - 1];
+  const [mountedTabs, setMountedTabs] = useState(() => new Set([TAB_KEYS.HOME]));
   const [catalog, setCatalog] = useState({ categories: [] });
   const [storefront, setStorefront] = useState({ carouselSlides: [], activeFestivalDiscount: null });
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  // Owned here rather than inside SearchScreen so it survives pushing a product on top of
+  // the results — only the top of the stack is rendered, so the search screen unmounts.
+  const [searchQuery, setSearchQuery] = useState("");
   const [cartItems, setCartItems] = useState([]);
   const [stack, setStack] = useState([]);
   const [shippingMethodId, setShippingMethodId] = useState(null);
@@ -73,66 +98,147 @@ export default function MainTabs({ auth, onSignOut }) {
   const [mutationError, setMutationError] = useState("");
   const checkoutAttemptId = useRef(null);
   const loadStoreRef = useRef(null);
+  const lastLoadedAtRef = useRef(0);
+  const lastRevisionRef = useRef(null);
+  const backgroundedAtRef = useRef(0);
+  const silentFailuresRef = useRef(0);
+  const stateRef = useRef({});
+  // Read by the back handler so it can stay referentially stable and not re-subscribe on
+  // every navigation.
+  const stackRef = useRef([]);
+  const tabHistoryRef = useRef([TAB_KEYS.HOME]);
+  const handleContinueShoppingRef = useRef(() => {});
+  const confirmExit = useExitConfirm();
+  const isOffline = useNetworkStatus();
 
-  const loadStore = useCallback(async () => {
-    setDataStatus("loading");
-    setDataError("");
+  // `t` is read through a ref rather than a dependency. As a dependency it changed
+  // identity on every language switch, which re-created `loadStore` and re-downloaded the
+  // entire 100-product catalog just because the user toggled EN/BN.
+  const tRef = useRef(t);
+  tRef.current = t;
+
+  // Load modes:
+  //   "initial" — no data yet; the shell shows skeletons but stays interactive
+  //   "silent"  — background refresh (realtime, foreground, festival expiry); no UI at all
+  //   "user"    — pull-to-refresh or an explicit retry; inline spinner
+  // Only "initial" is allowed to take over the screen, and only when there is nothing to
+  // show. Previously every refresh blanked the whole app behind an opaque overlay.
+  const loadStore = useCallback(async (mode = "initial") => {
+    if (mode !== "silent") {
+      setDataStatus("loading");
+      setDataError("");
+    }
     try {
-      const storefrontResponse = await getStorefront();
-      const nextStorefront = storefrontResponse.data || { carouselSlides: [], activeFestivalDiscount: null };
-      const nextCatalog = await fetchCatalog(nextStorefront.activeFestivalDiscount);
+      const isClient = auth?.role === "CLIENT";
+
+      // One parallel batch. These four calls have no data dependency on each other — the
+      // old code awaited them in sequence purely so the responses could be *mapped* in
+      // order. Fetching is now separated from mapping, so the round-trips collapse from
+      // four into one. allSettled keeps the best-effort semantics of profile and cart.
+      const [storefrontResult, catalogResult, cartResult, profileResult] = await Promise.allSettled([
+        getStorefront(),
+        fetchCatalogRaw(),
+        isClient ? fetchCartRaw() : Promise.resolve(null),
+        isClient ? getProfile() : Promise.resolve(null),
+      ]);
+
+      if (catalogResult.status === "rejected") throw catalogResult.reason;
+
+      const nextStorefront = (storefrontResult.status === "fulfilled" && storefrontResult.value?.data)
+        || { carouselSlides: [], activeFestivalDiscount: null };
+      const festival = nextStorefront.activeFestivalDiscount;
+
+      // Pure mapping, unchanged — same functions, same arguments, just applied after the
+      // batch instead of between round-trips.
+      const nextCatalog = buildCatalog(catalogResult.value, festival);
       setStorefront(nextStorefront);
       setCatalog(nextCatalog);
-      if (auth?.role === "CLIENT") {
-        setCartItems(await fetchCart(nextCatalog, nextStorefront.activeFestivalDiscount));
-        try {
-          const profileResponse = await getProfile();
-          const data = profileResponse.data;
-          const p = data?.profile;
-          const loaded = {
-            customerName: p?.name || data?.displayName || "",
-            phone: p?.phone || "",
-            division: p?.division?.name || "",
-            district: p?.district?.name || "",
-            thana: p?.thana?.name || "",
-            shopName: p?.shopName || "",
-          };
-          setSavedAddress(loaded);
-          setShippingAddress(loaded);
-        } catch {
-          // profile fetch is best-effort; fall back to empty address
-        }
+
+      if (isClient && cartResult.status === "fulfilled" && cartResult.value) {
+        setCartItems(mapApiCart(cartResult.value.data, nextCatalog, festival));
       }
+
+      if (isClient && profileResult.status === "fulfilled" && profileResult.value) {
+        const data = profileResult.value.data;
+        const p = data?.profile;
+        const loaded = {
+          customerName: p?.name || data?.displayName || "",
+          phone: p?.phone || "",
+          division: p?.division?.name || "",
+          district: p?.district?.name || "",
+          thana: p?.thana?.name || "",
+          shopName: p?.shopName || "",
+        };
+        setSavedAddress(loaded);
+        setShippingAddress(loaded);
+      }
+
+      lastLoadedAtRef.current = Date.now();
+      silentFailuresRef.current = 0;
       setDataStatus("ready");
     } catch (error) {
-      setDataError(getLocalizedError(error, t, "errors.loadStore"));
+      // A silent refresh must not destroy data the user is already looking at. Only
+      // escalate to a visible error once background refreshes have failed repeatedly.
+      if (mode === "silent") {
+        silentFailuresRef.current += 1;
+        if (silentFailuresRef.current >= 2) {
+          setMutationError(getLocalizedError(error, tRef.current, "errors.loadStore"));
+        }
+        return;
+      }
+      setDataError(getLocalizedError(error, tRef.current, "errors.loadStore"));
       setDataStatus("error");
     }
-  }, [auth?.role, t]);
+  }, [auth?.role]);
   loadStoreRef.current = loadStore;
 
   useEffect(() => {
-    loadStore();
+    loadStore("initial");
   }, [loadStore]);
 
   useEffect(() => {
     let refreshTimer;
+    // Jittered so N clients do not all hit /products in the same 500 ms window after an
+    // admin edits the catalog.
     const scheduleRefresh = () => {
       clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => loadStoreRef.current?.(), 500);
+      refreshTimer = setTimeout(
+        () => loadStoreRef.current?.("silent"),
+        500 + Math.random() * 4500
+      );
     };
     const channel = supabase
       .channel("catalog-revision")
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "catalog_revision", filter: "id=eq.1" },
-        scheduleRefresh
+        (payload) => {
+          // The revision number used to be discarded, so every event forced a full
+          // re-download. Skip events that do not actually advance the revision.
+          const revision = payload?.new?.revision ?? payload?.new?.updated_at ?? null;
+          if (revision !== null && revision === lastRevisionRef.current) return;
+          lastRevisionRef.current = revision;
+          scheduleRefresh();
+        }
       )
       .subscribe((status) => {
-        if (status === "SUBSCRIBED") scheduleRefresh();
+        // Subscribing used to fire a refresh unconditionally, which ran the entire
+        // waterfall a second time ~500 ms after every cold start.
+        if (status !== "SUBSCRIBED") return;
+        if (Date.now() - lastLoadedAtRef.current < STALE_AFTER_MS) return;
+        scheduleRefresh();
       });
     const appStateSubscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") scheduleRefresh();
+      if (state !== "active") {
+        backgroundedAtRef.current = Date.now();
+        return;
+      }
+      // Foreground fires for the notification shade, permission dialogs, returning from
+      // Google sign-in and unlocking. Only refresh after a real absence, and only if the
+      // data is actually stale.
+      const away = Date.now() - backgroundedAtRef.current;
+      const stale = Date.now() - lastLoadedAtRef.current > STALE_AFTER_MS;
+      if (away > MIN_BACKGROUND_MS && stale) scheduleRefresh();
     });
     return () => {
       clearTimeout(refreshTimer);
@@ -145,7 +251,7 @@ export default function MainTabs({ auth, onSignOut }) {
     const endsAt = storefront.activeFestivalDiscount?.endsAt;
     if (!endsAt) return undefined;
     const delay = Math.max(0, new Date(endsAt).getTime() - Date.now() + 1000);
-    const timeout = setTimeout(loadStore, Math.min(delay, 2_147_000_000));
+    const timeout = setTimeout(() => loadStore("silent"), Math.min(delay, 2_147_000_000));
     return () => clearTimeout(timeout);
   }, [loadStore, storefront.activeFestivalDiscount?.endsAt]);
 
@@ -153,15 +259,36 @@ export default function MainTabs({ auth, onSignOut }) {
     () => ({
       [TAB_KEYS.HOME]: HomeScreen,
       [TAB_KEYS.CATEGORIES]: CategoriesScreen,
-      [TAB_KEYS.SEARCH]: SearchScreen,
       [TAB_KEYS.CART]: CartScreen,
       [TAB_KEYS.PROFILE]: ProfileScreen,
     }),
     []
   );
 
+  // A tab joins the mounted set the first time it is opened, and stays.
+  useEffect(() => {
+    setMountedTabs((current) => (current.has(activeTab) ? current : new Set(current).add(activeTab)));
+  }, [activeTab]);
+
+  // These two are the only handlers that must be referentially stable: `handleOpenProduct`
+  // flows down to the memoized CatalogProductCard, and an unstable identity there defeated
+  // the memo entirely, so every grid row re-rendered on every MainTabs render.
+  const pushScreen = useCallback((name, params = {}) => {
+    setStack((currentStack) => [...currentStack, { name, params }]);
+  }, []);
+
+  const popScreen = useCallback(() => {
+    setStack((currentStack) => currentStack.slice(0, -1));
+  }, []);
+
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
   const currentRoute = stack[stack.length - 1] ?? null;
+  const hasData = catalog.categories.length > 0;
+
+  // Latest-value mirror of the state the stable handlers below need to read.
+  stateRef.current = { cartItems, catalog, storefront, mutationBusy };
+  stackRef.current = stack;
+  tabHistoryRef.current = tabHistory;
   const shippingMethod = SHIPPING_OPTIONS.find((option) => option.id === shippingMethodId) ?? null;
   const paymentMethod = PAYMENT_OPTIONS.find((option) => option.id === paymentMethodId) ?? null;
   const checkoutTotals = getCheckoutTotals({
@@ -170,48 +297,94 @@ export default function MainTabs({ auth, onSignOut }) {
     festivalCampaign: storefront.activeFestivalDiscount,
   });
 
-  const pushScreen = (name, params = {}) => {
-    setStack((currentStack) => [...currentStack, { name, params }]);
-  };
+  // Re-visiting a tab moves it to the top of the trail rather than appending, so the history
+  // stays bounded by the tab count and back never walks a loop. Choosing Home explicitly
+  // clears the trail — Home is then one press from the exit prompt.
+  const navigateToTab = useCallback((key) => {
+    setTabHistory((prev) => {
+      if (prev[prev.length - 1] === key) return prev;
+      if (key === TAB_KEYS.HOME) return [TAB_KEYS.HOME];
+      return [TAB_KEYS.HOME, ...prev.filter((tab) => tab !== TAB_KEYS.HOME && tab !== key), key];
+    });
+  }, []);
 
-  const popScreen = () => {
-    setStack((currentStack) => currentStack.slice(0, -1));
-  };
+  const popTab = useCallback(() => {
+    setTabHistory((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
+  }, []);
 
-  const handleProfilePress = () => setActiveTab(TAB_KEYS.PROFILE);
-  const handleSearchPress = () => setActiveTab(TAB_KEYS.SEARCH);
-  const handleCartPress = () => setActiveTab(TAB_KEYS.CART);
-  const handleViewCategory = (categoryId) => {
+  const handleProfilePress = useCallback(() => navigateToTab(TAB_KEYS.PROFILE), [navigateToTab]);
+  // Search is pushed rather than switched to: it is an action opened from the header, so
+  // back returns to whichever tab you were on. Each fresh open starts with an empty query.
+  const handleSearchPress = useCallback(() => {
+    setSearchQuery("");
+    pushScreen(STACK_ROUTES.SEARCH);
+  }, [pushScreen]);
+  const handleCartPress = useCallback(() => navigateToTab(TAB_KEYS.CART), [navigateToTab]);
+  const handleViewCategory = useCallback((categoryId) => {
     setSelectedCategoryId(categoryId);
-    setActiveTab(TAB_KEYS.CATEGORIES);
-  };
-  const handleOpenProduct = (product) => pushScreen(STACK_ROUTES.PRODUCT_DETAILS, { product });
-  const runCartMutation = async (operation) => {
-    if (mutationBusy) return;
+    navigateToTab(TAB_KEYS.CATEGORIES);
+  }, [navigateToTab]);
+  const handleOpenProduct = useCallback(
+    (product) => pushScreen(STACK_ROUTES.PRODUCT_DETAILS, { product }),
+    [pushScreen]
+  );
+  const handleOrdersPress = useCallback(() => pushScreen(STACK_ROUTES.ORDERS), [pushScreen]);
+  const handleExpenseTrackerPress = useCallback(
+    () => pushScreen(STACK_ROUTES.EXPENSE_TRACKER),
+    [pushScreen]
+  );
+  const handleHelpCenterPress = useCallback(
+    () => pushScreen(STACK_ROUTES.HELP_CENTER),
+    [pushScreen]
+  );
+  const handleContactSupport = useCallback(() => {
+    Linking.openURL(
+      `https://wa.me/393202935579?text=${encodeURIComponent(
+        tRef.current("profile.supportMessage")
+      )}`
+    ).catch(() => {
+      Alert.alert(
+        tRef.current("profile.linkErrorTitle"),
+        tRef.current("profile.linkErrorMessage")
+      );
+    });
+  }, []);
+  // These handlers are passed to every screen and down into memoized rows, so they must
+  // keep a stable identity. They read the volatile values they need from `stateRef`
+  // instead of closing over them, which is what lets the dependency arrays stay empty.
+  const runCartMutation = useCallback(async (operation) => {
+    if (stateRef.current.mutationBusy) return;
     setMutationBusy(true);
     setMutationError("");
     try {
       setCartItems(await operation());
     } catch (error) {
-      setMutationError(getLocalizedError(error, t, "errors.updateCart"));
+      setMutationError(getLocalizedError(error, tRef.current, "errors.updateCart"));
     } finally {
       setMutationBusy(false);
     }
-  };
-  const handleIncreaseCartItem = (lineId) => {
+  }, []);
+  // Reopens a cart line's pack in the configurator. Quantity, colours, sizes and pairs are
+  // all edited together there — the old +/- steppers could not work, because the server
+  // validates a line's stored allocations against its quantity and they scale together.
+  const handleEditCartItem = useCallback((lineId) => {
+    const { cartItems, catalog } = stateRef.current;
     const item = cartItems.find((entry) => entry.lineId === lineId);
-    if (item) runCartMutation(() => changeCartItem(item.id, item.quantity + 1, catalog, storefront.activeFestivalDiscount));
-  };
-  const handleDecreaseCartItem = (lineId) => {
-    const item = cartItems.find((entry) => entry.lineId === lineId);
-    if (item && item.quantity > 1) {
-      runCartMutation(() => changeCartItem(item.id, item.quantity - 1, catalog, storefront.activeFestivalDiscount));
-    }
-  };
-  const handleRemoveCartItem = (lineId) => {
+    if (!item) return;
+    const product = catalogProductFor(catalog, item.productId);
+    // The product may have left the catalog since it was added; there is nothing to edit.
+    if (!product) return;
+    pushScreen(STACK_ROUTES.PRODUCT_DETAILS, {
+      product,
+      initialConfig: configFromCartLine(item),
+      editingLine: { lineId: item.id, product, allocations: item.allocations, quantity: item.quantity },
+    });
+  }, [pushScreen]);
+  const handleRemoveCartItem = useCallback((lineId) => {
+    const { cartItems, catalog, storefront } = stateRef.current;
     const item = cartItems.find((entry) => entry.lineId === lineId);
     if (item) runCartMutation(() => deleteCartItem(item.id, catalog, storefront.activeFestivalDiscount));
-  };
+  }, [runCartMutation]);
   const handleClearCart = () => {
     if (!cartItems.length || mutationBusy) return;
     Alert.alert(t("cart.clearTitle"), t("cart.clearMessage"), [
@@ -220,26 +393,44 @@ export default function MainTabs({ auth, onSignOut }) {
         text: t("cart.clearAll"),
         style: "destructive",
         onPress: () =>
+          // Was a sequential await loop — ten cart lines meant ten serial round-trips,
+          // each re-mapping the whole cart response only for it to be discarded.
           runCartMutation(async () => {
-            for (const item of cartItems) await deleteCartItem(item.id, catalog, storefront.activeFestivalDiscount);
+            await Promise.all(
+              cartItems.map((item) => deleteCartItem(item.id, catalog, storefront.activeFestivalDiscount))
+            );
             return [];
           }),
       },
     ]);
   };
-  const handleAddConfiguredProduct = async (configs) => {
+  // Handles both adding a new pack and saving an edit to an existing one. `editingLine` is
+  // set only in the edit case and carries enough to restore the original if the save fails.
+  const handleAddConfiguredProduct = async (configs, editingLine) => {
     if (!configs?.length || mutationBusy) return;
     setMutationBusy(true);
     setMutationError("");
+    const festival = storefront.activeFestivalDiscount;
     try {
       let updatedCart = [];
-      for (const config of configs) {
-        if (!config?.product?.id || !config?.allocations?.length) continue;
-        updatedCart = await addConfiguredItem(config, catalog, storefront.activeFestivalDiscount);
+
+      if (editingLine) {
+        const [config] = configs;
+        if (!config?.product?.id || !config?.allocations?.length) return;
+        // No rollback branch any more. replaceCartItem is a single transactional PATCH, so a
+        // failure leaves the original line exactly as it was — re-adding it here would now
+        // duplicate the pack rather than restore it.
+        updatedCart = await replaceCartItem(editingLine.lineId, config, catalog, festival);
+      } else {
+        for (const config of configs) {
+          if (!config?.product?.id || !config?.allocations?.length) continue;
+          updatedCart = await addConfiguredItem(config, catalog, festival);
+        }
       }
+
       setCartItems(updatedCart);
       setStack([]);
-      setActiveTab(TAB_KEYS.CART);
+      navigateToTab(TAB_KEYS.CART);
     } catch (error) {
       setMutationError(getLocalizedError(error, t, "errors.addProduct"));
     } finally {
@@ -267,7 +458,7 @@ export default function MainTabs({ auth, onSignOut }) {
 
   const handleSignOut = () => {
     setStack([]);
-    setActiveTab(TAB_KEYS.HOME);
+    setTabHistory([TAB_KEYS.HOME]);
     onSignOut?.();
   };
 
@@ -325,12 +516,47 @@ export default function MainTabs({ auth, onSignOut }) {
   const handleContinueShopping = () => {
     checkoutAttemptId.current = null;
     setStack([]);
-    setActiveTab(TAB_KEYS.HOME);
+    setTabHistory([TAB_KEYS.HOME]);
   };
+  handleContinueShoppingRef.current = handleContinueShopping;
 
   const handleTrackOrder = () => {
     setStack([{ name: STACK_ROUTES.ORDERS, params: {} }]);
   };
+
+  // Android hardware back, in priority order. Every branch returns true — the app is only
+  // ever closed through the explicit confirmation at the end, never by falling through.
+  //
+  // Three things never reach here because Android consumes them first, which is correct:
+  // the fullscreen image viewer (it has its own onRequestClose), any Alert dialog, and the
+  // soft keyboard. On the Search tab the input auto-focuses, so the first press there closes
+  // the keyboard and appears to do nothing.
+  const handleHardwareBack = useCallback(() => {
+    // An order is in flight — do not let the user navigate out from under it.
+    if (stateRef.current.mutationBusy) return true;
+
+    const route = stackRef.current[stackRef.current.length - 1] ?? null;
+
+    // The confirmation screen's own back chevron goes Home; hardware back must match it,
+    // rather than popping onto the now-empty cart.
+    if (route?.name === STACK_ROUTES.ORDER_CONFIRMATION) {
+      handleContinueShoppingRef.current();
+      return true;
+    }
+    if (stackRef.current.length) {
+      popScreen();
+      return true;
+    }
+    if (tabHistoryRef.current.length > 1) {
+      popTab();
+      return true;
+    }
+
+    // Home with nothing left to unwind.
+    return confirmExit();
+  }, [confirmExit, popScreen, popTab]);
+
+  useBackHandler(handleHardwareBack);
 
   const renderStackScreen = () => {
     if (!currentRoute) {
@@ -338,10 +564,22 @@ export default function MainTabs({ auth, onSignOut }) {
     }
 
     switch (currentRoute.name) {
+      case STACK_ROUTES.SEARCH:
+        return (
+          <SearchScreen
+            catalog={catalog}
+            onOpenProduct={handleOpenProduct}
+            onBack={popScreen}
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+          />
+        );
       case STACK_ROUTES.PRODUCT_DETAILS:
         return (
           <ProductDetailsScreen
             product={currentRoute.params.product}
+            initialConfig={currentRoute.params.initialConfig}
+            editingLine={currentRoute.params.editingLine}
             onBack={popScreen}
             onAddConfiguredProduct={handleAddConfiguredProduct}
           />
@@ -394,6 +632,13 @@ export default function MainTabs({ auth, onSignOut }) {
         return <OrdersScreen onBack={popScreen} />;
       case STACK_ROUTES.EXPENSE_TRACKER:
         return <ExpenseTrackerScreen onBack={popScreen} />;
+      case STACK_ROUTES.HELP_CENTER:
+        return (
+          <HelpCenterScreen
+            onBack={popScreen}
+            onContactSupport={handleContactSupport}
+          />
+        );
       default:
         return null;
     }
@@ -401,11 +646,17 @@ export default function MainTabs({ auth, onSignOut }) {
 
   return (
     <View style={styles.container}>
-      {Object.entries(screens).map(([screenKey, ScreenComponent]) => (
+      {Object.entries(screens).map(([screenKey, ScreenComponent]) => {
+        // Tabs mount on first visit and stay mounted. Previously all five mounted on the
+        // first render and never unmounted, so four invisible screen trees — their effects,
+        // timers, images and ~280 text nodes — stayed live for the whole session.
+        if (!mountedTabs.has(screenKey)) return null;
+
+        return (
         <View key={screenKey} style={screenKey === activeTab ? styles.activeScreen : styles.hiddenScreen}>
           <ScreenComponent
             activeTab={activeTab}
-            onTabPress={setActiveTab}
+            onTabPress={navigateToTab}
             onProfilePress={handleProfilePress}
             onSearchPress={handleSearchPress}
             onCartPress={handleCartPress}
@@ -418,8 +669,7 @@ export default function MainTabs({ auth, onSignOut }) {
             onOpenProduct={handleOpenProduct}
             cartItems={cartItems}
             cartCount={cartCount}
-            onIncreaseCartItem={handleIncreaseCartItem}
-            onDecreaseCartItem={handleDecreaseCartItem}
+            onEditCartItem={handleEditCartItem}
             onRemoveCartItem={handleRemoveCartItem}
             onClearCart={handleClearCart}
             onCheckout={handleStartCheckout}
@@ -427,13 +677,21 @@ export default function MainTabs({ auth, onSignOut }) {
             error={mutationError}
             auth={auth}
             onSignOut={handleSignOut}
-            onOrdersPress={() => pushScreen(STACK_ROUTES.ORDERS)}
-            onExpenseTrackerPress={() => pushScreen(STACK_ROUTES.EXPENSE_TRACKER)}
+            onOrdersPress={handleOrdersPress}
+            onExpenseTrackerPress={handleExpenseTrackerPress}
+            onHelpCenterPress={handleHelpCenterPress}
           />
         </View>
-      ))}
+        );
+      })}
       {currentRoute ? <View style={styles.stackOverlay}>{renderStackScreen()}</View> : null}
-      {dataStatus === "loading" ? (
+      {/* Rendered after the stack so it sits above a pushed checkout screen — losing signal
+          on the payment step is exactly when this needs to be readable. */}
+      <OfflineBanner visible={isOffline} />
+      {/* The loading and error overlays are opaque and cover the whole app, so they are
+          only allowed to appear when there is genuinely nothing to show. A background
+          refresh over existing content stays silent. */}
+      {dataStatus === "loading" && !hasData ? (
         <View style={styles.statusOverlay}>
           <ActivityIndicator size="large" color={colors.brand} />
           <AppText variant="body" tone="secondary" style={styles.statusText}>
@@ -441,7 +699,7 @@ export default function MainTabs({ auth, onSignOut }) {
           </AppText>
         </View>
       ) : null}
-      {dataStatus === "error" ? (
+      {dataStatus === "error" && !hasData ? (
         <View style={styles.statusOverlay} accessibilityLiveRegion="assertive">
           <AppText variant="h2" style={styles.statusTitle}>
             {t("errors.storeUnavailable")}
@@ -451,7 +709,8 @@ export default function MainTabs({ auth, onSignOut }) {
           </AppText>
           <Button
             title={t("common.retry")}
-            onPress={loadStore}
+            // Wrapped so the press event cannot land in the `mode` parameter.
+            onPress={() => loadStore("user")}
             size="md"
             fullWidth={false}
             style={styles.retryButton}

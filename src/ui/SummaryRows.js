@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { StyleSheet, View } from "react-native";
 
 import { spacing, useStyles } from "../theme";
@@ -6,7 +8,7 @@ import AppText from "./AppText";
 // Label/value rows with an optional emphasised total below a rule. The checkout summary
 // card and the cart's sticky panel each had their own copy of this.
 
-export default function SummaryRows({ rows = [], total, emphasis = "md", style, ...rest }) {
+function SummaryRows({ rows = [], total, emphasis = "md", style, ...rest }) {
   const styles = useStyles(getStyles);
 
   return (
@@ -56,3 +58,5 @@ const getStyles = (colors) =>
       marginVertical: spacing.sm,
     },
   });
+
+export default memo(SummaryRows);

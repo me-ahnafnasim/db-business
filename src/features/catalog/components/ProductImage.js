@@ -1,10 +1,10 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useEffect, useState } from "react";
+import Feather from "@expo/vector-icons/Feather";
+import { memo, useEffect, useState } from "react";
 import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
 
 import { useTheme } from "../../../theme/ThemeProvider";
 
-export default function ProductImage({
+function ProductImage({
   uri,
   accessibilityLabel,
   style,
@@ -37,7 +37,7 @@ export default function ProductImage({
           }}
         />
       ) : (
-        <MaterialCommunityIcons name="shoe-sneaker" size={48} color={colors.muted} />
+        <Feather name="image" size={44} color={colors.muted} />
       )}
       {loading ? <ActivityIndicator style={styles.loader} color={colors.brand} /> : null}
     </View>
@@ -59,3 +59,5 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
 });
+
+export default memo(ProductImage);

@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { useTranslation } from "react-i18next";
 
 import { useLanguage } from "../../../i18n/LanguageProvider";
@@ -9,7 +11,7 @@ import { AppText } from "../../../ui";
 // cart line, the checkout review, the order history and the confirmation card. The
 // colour map hangs off a different property in each of those, so callers pass it in.
 
-export default function AllocationLine({ allocation, colorNames, variant = "caption" }) {
+function AllocationLine({ allocation, colorNames, variant = "caption" }) {
   const { language } = useLanguage();
   const { t } = useTranslation();
 
@@ -23,3 +25,5 @@ export default function AllocationLine({ allocation, colorNames, variant = "capt
     </AppText>
   );
 }
+
+export default memo(AllocationLine);

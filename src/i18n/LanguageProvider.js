@@ -7,28 +7,32 @@ import getStorage from "../utils/storage";
 
 const STORAGE_KEY = "app_language";
 
+// Bangla throughout: it is the default the app opens in, so it is also the default every
+// fallback here lands on. A stored preference always wins over it.
+const DEFAULT_LANGUAGE = "bn";
+
 const LanguageContext = createContext({
-  language: "en",
-  layout: getLocaleLayout("en"),
+  language: DEFAULT_LANGUAGE,
+  layout: getLocaleLayout(DEFAULT_LANGUAGE),
   setLanguage: () => {},
   toggleLanguage: () => {},
-  languageLabel: "English",
+  languageLabel: "বাংলা",
 });
 
 export function LanguageProvider({ children }) {
   const { i18n, t } = useTranslation();
-  const [language, setLanguageState] = useState("en");
+  const [language, setLanguageState] = useState(DEFAULT_LANGUAGE);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     async function loadLanguage() {
       try {
         const saved = await getStorage().getItem(STORAGE_KEY);
-        const initial = saved === "bn" || saved === "en" ? saved : "en";
+        const initial = saved === "bn" || saved === "en" ? saved : DEFAULT_LANGUAGE;
         await i18n.changeLanguage(initial);
         setLanguageState(initial);
       } catch {
-        setLanguageState("en");
+        setLanguageState(DEFAULT_LANGUAGE);
       } finally {
         setReady(true);
       }

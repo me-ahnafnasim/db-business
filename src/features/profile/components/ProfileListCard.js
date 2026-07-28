@@ -21,13 +21,9 @@ export default function ProfileListCard({
       {items.map((item, index) => {
         const isThemeItem = item.key === "theme";
         const isLanguageItem = item.key === "language";
-        const value = isThemeItem
-          ? themeValue
-          : isLanguageItem
-            ? languageLabel
-            : item.staticValue ?? null;
-        // Display-only rows such as "Currency · BDT" have no handler, so they no longer
-        // advertise a chevron they never honoured.
+        // Theme and language are the only rows that show a value. The `staticValue` escape
+        // hatch here existed solely for the "Currency · BDT" row, which has been removed.
+        const value = isThemeItem ? themeValue : isLanguageItem ? languageLabel : null;
         const onPress = isThemeItem
           ? onThemePress
           : isLanguageItem

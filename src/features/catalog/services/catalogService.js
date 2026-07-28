@@ -61,11 +61,18 @@ export function mapApiProduct(product, index = 0, festivalCampaign = null) {
   };
 }
 
-export async function fetchCatalog(festivalCampaign = null) {
+// Fetching is split from mapping so the caller can issue every request in one parallel
+// batch and apply the festival discount afterwards, instead of waiting for the storefront
+// response just to learn a discount percentage. The mapping below is unchanged.
+export async function fetchCatalogRaw() {
   const [response, popularRes] = await Promise.all([
     getProducts({ page: 1, limit: 100, isActive: true }),
     getPopularProducts(6).catch(() => null),
   ]);
+  return { response, popularRes };
+}
+
+export function buildCatalog({ response, popularRes }, festivalCampaign = null) {
   const products = (response.data || []).filter(Boolean).map((product, index) => mapApiProduct(product, index, festivalCampaign)).filter((product) => product.variants.length);
 
   const popularData = popularRes?.data?.data || [];
@@ -89,4 +96,8 @@ export async function fetchCatalog(festivalCampaign = null) {
     pagination: response.pagination,
     popularProducts,
   };
+}
+
+export async function fetchCatalog(festivalCampaign = null) {
+  return buildCatalog(await fetchCatalogRaw(), festivalCampaign);
 }

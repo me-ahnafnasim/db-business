@@ -1,10 +1,12 @@
-import { useRef, useState, useEffect } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { useCallback, useRef, useState, useEffect } from "react";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AntDesign from "@expo/vector-icons/AntDesign";
+import Feather from "@expo/vector-icons/Feather";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "../features/auth/AuthProvider";
+import { useBackHandler } from "../hooks/useBackHandler";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { getLocalizedError } from "../i18n/errors";
 
@@ -25,6 +27,35 @@ export default function ProfileCompletionScreen({ auth, onComplete }) {
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState(null);
   const [error, setError] = useState(null);
+  const { signOut } = useAuth();
+  const discardPromptOpen = useRef(false);
+
+  // This screen is a blocking gate — the user is authenticated but cannot reach the app
+  // until the profile is saved, and there is no back affordance in the header. So the only
+  // meaningful "back" is to abandon setup and sign out, and it has to be confirmed because
+  // the form is otherwise lost silently. Back does nothing at all while saving.
+  const handleBack = useCallback(() => {
+    if (loading || discardPromptOpen.current) return true;
+    discardPromptOpen.current = true;
+    const close = () => { discardPromptOpen.current = false; };
+
+    Alert.alert(
+      t("app.discardProfileTitle"),
+      t("app.discardProfileMessage"),
+      [
+        { text: t("common.cancel"), style: "cancel", onPress: close },
+        {
+          text: t("common.discard"),
+          style: "destructive",
+          onPress: () => { close(); signOut?.(); },
+        },
+      ],
+      { onDismiss: close }
+    );
+    return true;
+  }, [loading, signOut, t]);
+
+  useBackHandler(handleBack);
 
   // Geographic data
   const [divisions, setDivisions] = useState([]);
@@ -161,7 +192,7 @@ export default function ProfileCompletionScreen({ auth, onComplete }) {
       <StatusBar style={isDarkMode ? "light" : "dark"} />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
         <View style={styles.header}>
-          <AntDesign name="user" size={32} color={colors.brand} />
+          <Feather name="user" size={32} color={colors.brand} />
           <AppText variant="h2" style={styles.headerTitle}>
             {t("profileCompletion.title")}
           </AppText>

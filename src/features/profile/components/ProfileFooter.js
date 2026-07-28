@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { spacing, useStyles } from "../../../theme";
 import { AppText } from "../../../ui";
+import appPackage from "../../../../package.json";
 
 export default function ProfileFooter() {
   const { t } = useTranslation();
@@ -14,7 +15,7 @@ export default function ProfileFooter() {
         {t("profile.needHelp")}
       </AppText>
       <AppText variant="label" tone="secondary" style={styles.version}>
-        {t("profile.version", { version: "1.0.0" })}
+        {t("profile.version", { version: appPackage.version })}
       </AppText>
     </View>
   );

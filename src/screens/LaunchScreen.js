@@ -1,3 +1,8 @@
+// AntDesign is loaded for exactly one glyph — the Google mark on the sign-in button.
+// It costs ~130 KB, and it is kept on purpose: Google's Sign-In branding guidelines
+// require the official mark, so substituting a generic icon is not an option. Every
+// other family (MaterialCommunityIcons 1.31 MB, Ionicons 390 KB, SimpleLineIcons 54 KB)
+// has been collapsed into Feather. Do not add a second family without the same scrutiny.
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
@@ -17,6 +22,8 @@ import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import LanguageToggle from "../components/LanguageToggle";
+import { useBackHandler } from "../hooks/useBackHandler";
+import { useExitConfirm } from "../hooks/useExitConfirm";
 import { useLanguage } from "../i18n/LanguageProvider";
 
 const BRAND_TEXT = "NoboSole";
@@ -257,6 +264,10 @@ export default function LaunchScreen({ onGoogleLogin, error, loading }) {
   const { height } = useWindowDimensions();
   const compact = height < 700;
   const dynamicStyles = getDynamicStyles(layout);
+
+  // Signed out, so there is nothing to navigate back to — but back should still confirm
+  // rather than closing the app outright.
+  useBackHandler(useExitConfirm());
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);

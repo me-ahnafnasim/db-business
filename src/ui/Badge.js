@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { StyleSheet, View } from "react-native";
 
 import { radius, spacing, useStyles } from "../theme";
@@ -7,7 +9,7 @@ import AppText from "./AppText";
 // with 9px text in the header, 22dp with 11px in the tab bar. Uses minHeight rather than
 // a fixed height so Bangla numerals cannot clip.
 
-export default function Badge({ count = 0, max = 99, tone = "danger", size = "md", style, ...rest }) {
+function Badge({ count = 0, max = 99, tone = "danger", size = "md", style, ...rest }) {
   const styles = useStyles(getStyles);
   if (!count) return null;
 
@@ -43,3 +45,5 @@ const getStyles = (colors) =>
       backgroundColor: colors.brand,
     },
   });
+
+export default memo(Badge);

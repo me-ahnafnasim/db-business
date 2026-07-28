@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import Feather from "@expo/vector-icons/Feather";
 import { Pressable, StyleSheet, View } from "react-native";
 
@@ -10,7 +12,7 @@ import { AppText } from "../../../ui";
 // A row without an onPress renders as static text with no chevron — previously every row
 // got a chevron whether or not anything happened when you tapped it.
 
-export default function ProfileRow({ icon, label, value, onPress, showDivider = false }) {
+function ProfileRow({ icon, label, value, onPress, showDivider = false }) {
   const { colors } = useTheme();
   const styles = useStyles(getStyles);
 
@@ -87,3 +89,5 @@ const getStyles = (colors) =>
       textAlign: "right",
     },
   });
+
+export default memo(ProfileRow);

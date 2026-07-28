@@ -1,8 +1,10 @@
+import { memo } from "react";
+
 import { useTranslation } from "react-i18next";
 
 import { SelectionCard } from "../../../ui";
 
-export default function PaymentMethodCard({ method, selected, onPress }) {
+function PaymentMethodCard({ method, selected, onPress }) {
   const { t } = useTranslation();
 
   return (
@@ -14,3 +16,5 @@ export default function PaymentMethodCard({ method, selected, onPress }) {
     />
   );
 }
+
+export default memo(PaymentMethodCard);

@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { Pressable, StyleSheet } from "react-native";
 
 import { radius, spacing, useStyles } from "../theme";
@@ -9,7 +11,7 @@ import AppText from "./AppText";
 // Selection is conveyed through accessibilityState as well as colour, so it is not
 // communicated by colour alone.
 
-export default function Chip({
+function Chip({
   label,
   selected = false,
   onPress,
@@ -72,3 +74,5 @@ const getStyles = (colors) =>
       backgroundColor: colors.tabPressedBackground,
     },
   });
+
+export default memo(Chip);

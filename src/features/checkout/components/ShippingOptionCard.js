@@ -1,10 +1,12 @@
+import { memo } from "react";
+
 import { useTranslation } from "react-i18next";
 
 import { useLanguage } from "../../../i18n/LanguageProvider";
 import { AppText, SelectionCard } from "../../../ui";
 import { formatBdt } from "../../../utils/money";
 
-export default function ShippingOptionCard({ option, selected, onPress }) {
+function ShippingOptionCard({ option, selected, onPress }) {
   const { language } = useLanguage();
   const { t } = useTranslation();
 
@@ -22,3 +24,5 @@ export default function ShippingOptionCard({ option, selected, onPress }) {
     />
   );
 }
+
+export default memo(ShippingOptionCard);

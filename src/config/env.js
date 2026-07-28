@@ -3,6 +3,7 @@ const GOOGLE_WEB_CLIENT_ID =
   "1029591703083-h56ftm0r97ni2g9cj1a7od95n86o8aqb.apps.googleusercontent.com";
 
 const API_URL = "https://nobosole-backend.vercel.app/api/v1";
+const WEB_URL = "https://nobosole-app.vercel.app";
 
 function trimTrailingSlash(value) {
   return value?.replace(/\/+$/, "");
@@ -18,7 +19,7 @@ export const env = Object.freeze({
   supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
   webUrl: trimTrailingSlash(
     process.env.EXPO_PUBLIC_WEB_URL ||
-      (typeof window !== "undefined" ? window.location.origin : "")
+      (typeof window !== "undefined" ? window.location.origin : WEB_URL)
   ),
 });
 

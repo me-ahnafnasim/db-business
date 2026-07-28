@@ -3,6 +3,49 @@ import { supabase } from '../config/supabase';
 
 const REQUEST_TIMEOUT_MS = 15000;
 
+// Cached access token.
+//
+// Every request used to await supabase.auth.getSession(), which on native is an
+// AsyncStorage read behind the client's session lock — so concurrent requests serialised
+// against each other. A five-request load paid that five times. onAuthStateChange fires
+// INITIAL_SESSION on subscribe, so this warms itself, and the 401 -> refresh -> retry
+// path below remains the safety net if a cached token goes stale.
+let cachedAccessToken = null;
+let sessionPrimed = false;
+let authListenerBound = false;
+
+// Bound lazily on the first request rather than at module scope. Registering it at import
+// time made this an import-time side effect on the app's startup path, before React had
+// even mounted.
+function bindAuthListener() {
+  if (authListenerBound) return;
+  authListenerBound = true;
+  try {
+    supabase.auth.onAuthStateChange((_event, session) => {
+      cachedAccessToken = session?.access_token ?? null;
+      sessionPrimed = true;
+    });
+  } catch {
+    // Without the listener the cache simply falls back to getSession() below.
+    authListenerBound = false;
+  }
+}
+
+async function getAccessToken() {
+  bindAuthListener();
+  if (sessionPrimed) return cachedAccessToken;
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) {
+    throw new ApiError('Could not read the Supabase session.', {
+      code: 'AUTH_SESSION_ERROR',
+    });
+  }
+  cachedAccessToken = data.session?.access_token ?? null;
+  sessionPrimed = true;
+  return cachedAccessToken;
+}
+
 export class ApiError extends Error {
   constructor(message, options = {}) {
     super(message);
@@ -22,15 +65,8 @@ async function request(method, path, body = null, requestOptions = {}) {
     );
   }
 
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError) {
-    throw new ApiError('Could not read the Supabase session.', {
-      code: 'AUTH_SESSION_ERROR',
-    });
-  }
-
   const headers = { 'Content-Type': 'application/json' };
-  const accessToken = sessionData.session?.access_token;
+  const accessToken = await getAccessToken();
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
   const options = { method, headers };
@@ -55,25 +91,39 @@ async function request(method, path, body = null, requestOptions = {}) {
     clearTimeout(timeout);
   }
 
-  const responseText = await res.text();
+  // res.json() parses the body stream directly. The previous res.text() + JSON.parse
+  // materialised the whole payload as a JS string first — a full extra copy of a catalog
+  // response that can run to a megabyte. A 204/empty body still yields null.
   let data = null;
-  if (responseText) {
+  if (res.status !== 204) {
     try {
-      data = JSON.parse(responseText);
-    } catch {
-      throw new ApiError('The server returned an invalid response.', {
-        status: res.status,
-        code: 'INVALID_RESPONSE',
-      });
+      data = await res.json();
+    } catch (error) {
+      if (error?.name === 'SyntaxError' && res.headers.get('content-length') === '0') {
+        data = null;
+      } else if (error?.name === 'SyntaxError') {
+        throw new ApiError('The server returned an invalid response.', {
+          status: res.status,
+          code: 'INVALID_RESPONSE',
+        });
+      } else {
+        data = null;
+      }
     }
   }
 
   if (!res.ok) {
     if (res.status === 401 && requestOptions.retryAuth !== false && accessToken) {
-      const { error: refreshError } = await supabase.auth.refreshSession();
+      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
       if (!refreshError) {
+        // Adopt the new token immediately rather than waiting for onAuthStateChange to
+        // fire, so the retry below cannot go out with the token that just 401'd.
+        cachedAccessToken = refreshed?.session?.access_token ?? null;
+        sessionPrimed = true;
         return request(method, path, body, { ...requestOptions, retryAuth: false });
       }
+      cachedAccessToken = null;
+      sessionPrimed = true;
       await supabase.auth.signOut({ scope: 'local' });
     }
 
@@ -160,8 +210,13 @@ export async function addToCart(productId, allocations, quantityDozen = 1) {
   return request('POST', '/client/cart/items', { productId, allocations, quantityDozen });
 }
 
-export async function updateCartItem(itemId, quantityDozen) {
-  return request('PATCH', `/client/cart/items/${itemId}`, { quantityDozen });
+// `allocations` is optional. Omit it and the server rescales the stored recipe to the new
+// quantity; send one and it replaces the pack and the quantity together, in one transaction.
+export async function updateCartItem(itemId, quantityDozen, allocations = null) {
+  return request('PATCH', `/client/cart/items/${itemId}`, {
+    quantityDozen,
+    ...(allocations ? { allocations } : {}),
+  });
 }
 
 export async function removeFromCart(itemId) {

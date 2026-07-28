@@ -19,8 +19,7 @@ export default function CartScreen({
   onCartPress,
   cartItems,
   cartCount,
-  onIncreaseCartItem,
-  onDecreaseCartItem,
+  onEditCartItem,
   onRemoveCartItem,
   onClearCart,
   onCheckout,
@@ -52,13 +51,14 @@ export default function CartScreen({
         <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} showsVerticalScrollIndicator>
           {cartItems.length ? (
             <>
+              {/* The handlers are passed through unbound so each row receives stable
+                  props and its memo can actually hold; the row binds its own line id. */}
               {cartItems.map((item) => (
                 <CartLineItem
                   key={item.lineId ?? item.id}
                   item={item}
-                  onIncrease={() => onIncreaseCartItem?.(item.lineId ?? item.id)}
-                  onDecrease={() => onDecreaseCartItem?.(item.lineId ?? item.id)}
-                  onRemove={() => onRemoveCartItem?.(item.lineId ?? item.id)}
+                  onEdit={onEditCartItem}
+                  onRemove={onRemoveCartItem}
                 />
               ))}
               {error ? (

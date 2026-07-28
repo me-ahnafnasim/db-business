@@ -7,6 +7,7 @@ import FestivalDiscountBanner from "../components/FestivalDiscountBanner";
 import ScreenShell from "../components/ScreenShell";
 import CatalogProductCard from "../features/catalog/components/CatalogProductCard";
 import CatalogSectionHeader from "../features/catalog/components/CatalogSectionHeader";
+import { TAB_KEYS } from "../data/tabs";
 import { flattenProducts } from "../features/catalog/utils/catalogSelectors";
 import { useResponsiveGrid } from "../hooks/useResponsiveGrid";
 import { spacing, useStyles } from "../theme";
@@ -66,6 +67,8 @@ export default function HomeScreen({
   const topProducts = homeProducts.slice(0, 2);
   const moreProducts = catalog.popularProducts?.length ? catalog.popularProducts : homeProducts.slice(2, 8);
   const gridGap = useMemo(() => ({ gap: grid.gap }), [grid.gap]);
+  // Home stays mounted once visited, so its timers need to know when it is the front tab.
+  const isActive = activeTab === TAB_KEYS.HOME;
 
   return (
     <ScreenShell
@@ -77,8 +80,8 @@ export default function HomeScreen({
       cartCount={cartCount}
       auth={auth}
     >
-      <BannerCarousel slides={bannerSlides} />
-      <FestivalDiscountBanner campaign={festivalCampaign} />
+      <BannerCarousel slides={bannerSlides} active={isActive} />
+      <FestivalDiscountBanner campaign={festivalCampaign} active={isActive} />
       <View style={styles.featuredSection}>
         {!homeProducts.length ? (
           <EmptyState title={t("home.noProductsTitle")} description={t("home.noProductsText")} />

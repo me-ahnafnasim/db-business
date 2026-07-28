@@ -5,14 +5,29 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "nobosole",
+    "icon": "./assets/icon.png",
     "android": {
-      "package": "com.nobosole.mobile"
+      "package": "com.nobosole.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/monochrome-icon.png",
+        "backgroundColor": "#0a0e27"
+      },
+      "predictiveBackGestureEnabled": true,
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/store/play-icon-512.png"
     },
     "userInterfaceStyle": "light",
-    "splash": {
-      "resizeMode": "contain",
-      "backgroundColor": "#0a0e27"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -22,6 +37,28 @@
       }
     },
     "owner": "nasimx",
-    "plugins": ["@react-native-google-signin/google-signin"]
+    "plugins": [
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "extraProguardRules": "-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.google.android.gms.auth.** { *; }\n-keep class com.google.android.gms.common.** { *; }\n-dontwarn com.google.android.gms.**\n-keep class okhttp3.** { *; }\n-keep interface okhttp3.** { *; }\n-dontwarn okhttp3.**\n-keep class okio.** { *; }\n-dontwarn okio.**\n-keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*\n-keepclassmembers class ** { @com.facebook.react.uimanager.annotations.ReactProp <methods>; }"
+          }
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#0a0e27"
+        }
+      ]
+    ]
   }
 }

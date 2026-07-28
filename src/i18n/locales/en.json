@@ -14,7 +14,16 @@
     "previous": "Previous",
     "next": "Next",
     "back": "Go back",
-    "clear": "Clear"
+    "clear": "Clear",
+    "exit": "Exit",
+    "discard": "Discard",
+    "edit": "Edit"
+  },
+  "app": {
+    "exitTitle": "Exit NoboSole?",
+    "exitMessage": "You're on the home screen. Close the app?",
+    "discardProfileTitle": "Leave profile setup?",
+    "discardProfileMessage": "Your details won't be saved and you'll be signed out."
   },
   "launch": {
     "subtitle": "PREMIUM FOOTWEAR",
@@ -27,7 +36,6 @@
   "tabs": {
     "home": "Home",
     "categories": "Categories",
-    "search": "Search",
     "cart": "Cart",
     "profile": "Profile"
   },
@@ -131,7 +139,9 @@
     "packInvalid": "This pack no longer matches the current product rules. Remove it and rebuild.",
     "emptyTitle": "Your cart is empty",
     "emptySubtitle": "Browse our latest collection and add items to your cart",
-    "browseProducts": "Browse Products"
+    "browseProducts": "Browse Products",
+    "quantityDozen": "{{count}} dozen",
+    "editItem": "Edit {{name}}"
   },
   "checkout": {
     "shippingTitle": "Shipping",
@@ -176,6 +186,9 @@
     "title": "Order Confirmation",
     "subtitle": "Your order has been placed",
     "success": "Order placed successfully",
+    "celebrationTitle": "Brilliant choice!",
+    "celebrationBody": "Thank you for trusting NoboSole — your order is confirmed and we're getting it ready.",
+    "viewOrderDetails": "View order details",
     "status": "Status",
     "orderNumber": "Order number",
     "items": "Items",
@@ -221,13 +234,58 @@
     "paid": "Paid",
     "refunded": "Refunded"
   },
+  "network": {
+    "offline": "No internet connection. Your cart is saved."
+  },
+  "help": {
+    "title": "Help Center",
+    "subtitle": "How ordering on NoboSole works",
+    "packsTitle": "Packs & ordering",
+    "exact12Q": "Why must I allocate exactly 12 pairs?",
+    "exact12A": "One dozen is 12 pairs. Every pack is made to order, so you decide how those 12 pairs are divided across the sizes and colours you picked.",
+    "scalingQ": "I increased the quantity — why does it ask for 24 pairs now?",
+    "scalingA": "The total scales with the order: 2 dozen is 24 pairs, 3 dozen is 36. The split you already made is kept and scaled up, so you only adjust it if you want a different mix.",
+    "minTwoQ": "Why does every size need at least 2 pairs?",
+    "minTwoA": "Production runs in pairs of two. A size with a single pair cannot be manufactured, so each size in a pack takes a minimum of 2 pairs.",
+    "moqQ": "What is MOQ?",
+    "moqA": "The minimum number of dozens you must order of a shoe. It is counted across every pack of that shoe in your cart, not per pack — so two packs of 1 dozen each already satisfy an MOQ of 2 dozen.",
+    "blockedQ": "Why can't I check out?",
+    "blockedA": "Either a shoe has not reached its MOQ, or a pack no longer matches that product's current colour and size rules. The cart shows a red note on the line that needs attention — open it with Edit and rebuild the pack.",
+    "cartTitle": "Your cart",
+    "editQ": "How do I change the colour, size or quantity after adding to the cart?",
+    "editA": "Open the Cart tab and tap Edit on that line. The pack builder reopens with your current selection, and saving replaces the line.",
+    "perDozenQ": "Why are prices shown per dozen?",
+    "perDozenA": "NoboSole is wholesale only. Every price is for one dozen — 12 pairs — and the cart multiplies it by the number of dozens you ordered.",
+    "paymentTitle": "Payment",
+    "methodsQ": "Which payment methods can I use?",
+    "methodsA": "Cash on Delivery, where you pay when the order arrives, or Bank Transfer.",
+    "bankQ": "When do I get the bank transfer details?",
+    "bankA": "After you place the order. The transfer instructions are sent to you, and the order stays Unpaid until your transfer is confirmed.",
+    "paymentStatusQ": "What do Unpaid, Partially paid and Paid mean?",
+    "paymentStatusA": "Unpaid — nothing received yet. Partially paid — part of the amount has arrived and a balance is outstanding. Paid — settled in full. The Expense Tracker lists every payment and what is still owed.",
+    "deliveryTitle": "Delivery",
+    "optionsQ": "What are the delivery options?",
+    "optionsA": "Standard arrives in 3–5 business days, Express in 1–2 business days, and Pickup is ready for collection within 24 hours.",
+    "orderStatusQ": "What do the order statuses mean?",
+    "orderStatusA": "Pending — received, not yet confirmed. Confirmed — accepted. Processing — being made. Packed — ready to leave. Shipped — on the way to you. Delivered — completed.",
+    "cancelQ": "Can I cancel an order?",
+    "cancelA": "Open My Orders and use Cancel order. Once an order is Shipped it can no longer be cancelled in the app — contact support instead.",
+    "accountTitle": "Your account",
+    "detailsQ": "Why do you ask for my shop name and trade licence?",
+    "detailsA": "NoboSole sells wholesale to registered businesses. These details confirm you are a trade buyer and are used on your invoices and delivery paperwork.",
+    "settingsQ": "How do I change the language or switch to dark mode?",
+    "settingsA": "Go to Profile → Settings. Language switches the whole app between English and Bangla, and Theme switches between light and dark.",
+    "expensesQ": "What is the Expense Tracker?",
+    "expensesA": "Profile → Expense Tracker shows what you have paid, what each order cost, and how much is still outstanding.",
+    "stillStuck": "Still stuck?",
+    "stillStuckBody": "If your question is not answered here, message the NoboSole team on WhatsApp and someone will help you directly.",
+    "contactSupport": "Chat on WhatsApp"
+  },
   "profile": {
     "support": "Support",
     "settings": "Settings",
     "helpCenter": "Help Center",
     "customerService": "Customer Service",
-    "blog": "Blog",
-    "currency": "Currency",
     "language": "Language",
     "theme": "Theme",
     "dark": "Dark",
@@ -249,7 +307,17 @@
     "expenseTracker": "Expense Tracker",
     "expenseTrackerSub": "Payment history & outstanding",
     "needHelp": "Need help? Contact support",
-    "version": "Version {{version}}"
+    "version": "Version {{version}}",
+    "legal": "Legal & account",
+    "privacyPolicy": "Privacy Policy",
+    "terms": "Terms & Conditions",
+    "returnsPolicy": "Delivery, Returns & Refunds",
+    "deleteAccount": "Delete Account",
+    "deleteAccountMessage": "You will continue to NoboSole's account-deletion request page. Support will verify your identity and explain any records that must be retained by law.",
+    "continueDeletion": "Continue",
+    "supportMessage": "Hello NoboSole Support, I need help with the app.",
+    "linkErrorTitle": "Could not open link",
+    "linkErrorMessage": "Please try again or contact NoboSole Support on WhatsApp."
   },
   "profileCompletion": {
     "title": "Complete Your Profile",
@@ -304,6 +372,7 @@
     "cartEmpty": "Your cart is empty.",
     "packRuleChanged": "This shoe's packing rules changed. Rebuild the pack.",
     "packPairTotal": "Each dozen must contain exactly 12 allocated pairs.",
+    "packRequiresReconfigure": "This pack has too many sizes for that quantity. Edit it and rebuild the pack.",
     "packOptionLimit": "This pack uses too many colors or sizes.",
     "validation": "Some information is invalid. Check the form and try again.",
     "requestId": "Request ID",
@@ -318,10 +387,13 @@
   },
   "product_configurator": {
     "select_colors": "Select {{count}} color(s)",
-    "min_pairs_per_size": "Each size needs at least 2 pairs",
-    "pairs_per_dozen": "Pairs per dozen",
-    "min_2_pairs": "Minimum 2 pairs per size",
-    "add_dozen_to_cart": "Add {{count}} dozen to cart"
+    "min_pairs_per_size": "Each size needs at least {{count}} pairs",
+    "pairs_by_size": "Pairs by size",
+    "pairs_remaining": "{{count}} left to assign",
+    "pairs_complete": "Pack complete",
+    "min_pairs_hint": "Minimum {{count}} pairs per size",
+    "add_dozen_to_cart": "Add {{count}} dozen to cart",
+    "save_changes": "Save changes"
   },
   "festival": {
     "days": "Days",

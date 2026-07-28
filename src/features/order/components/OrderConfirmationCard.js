@@ -18,11 +18,10 @@ export default function OrderConfirmationCard({ order, onTrackOrder, onContinueS
 
   return (
     <Card style={styles.card}>
+      {/* The subtitle used to repeat here. StackScreenShell already renders
+          `confirmation.subtitle` in the header, so it was on screen twice. */}
       <AppText variant="h2" style={styles.title}>
         {t("confirmation.success")}
-      </AppText>
-      <AppText variant="bodySm" tone="secondary" style={styles.subtitle}>
-        {t("confirmation.subtitle")}
       </AppText>
       <SummaryRows
         rows={[
@@ -73,9 +72,7 @@ const getStyles = (colors) =>
       padding: spacing.lg + 2,
     },
     title: {
-      marginBottom: spacing.sm,
-    },
-    subtitle: {
+      // Carries the gap the removed subtitle used to hold below it.
       marginBottom: spacing.lg + 2,
     },
     pack: {

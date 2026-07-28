@@ -11,6 +11,7 @@ const ERROR_KEYS = {
   MOQ_NOT_MET: "cart.moqNotMet",
   PACK_RULE_CHANGED: "errors.packRuleChanged",
   PACK_PAIR_TOTAL: "errors.packPairTotal",
+  PACK_REQUIRES_RECONFIGURE: "errors.packRequiresReconfigure",
   PACK_OPTION_LIMIT: "errors.packOptionLimit",
   PACK_VARIANT_INVALID: "errors.packRuleChanged",
   VALIDATION_ERROR: "errors.validation",

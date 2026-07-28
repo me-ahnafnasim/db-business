@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import StackScreenShell from "../components/StackScreenShell";
+import ExpenseOrderCard from "../features/order/components/ExpenseOrderCard";
 import { getClientOrders } from "../services/api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { getLocalizedError } from "../i18n/errors";
-import { formatBdt, formatDate, paisaToBdt } from "../utils/money";
+import { formatBdt, paisaToBdt } from "../utils/money";
 import { radius, spacing, useStyles, useTheme } from "../theme";
 import { AppText, AsyncStateView, Button, Card, SummaryRows } from "../ui";
 
@@ -19,18 +20,6 @@ function computeSummary(orders) {
     }),
     { totalOrders: 0, totalPaidPaisa: 0, totalDuePaisa: 0 }
   );
-}
-
-function paymentStatusLabel(paymentStatus, paidPaisa, grandTotalPaisa, t) {
-  if (paymentStatus === "PAID") return t("status.paid");
-  if (paidPaisa > 0 && paidPaisa < grandTotalPaisa) return t("status.partially_paid");
-  return t("status.unpaid");
-}
-
-function paymentStatusTone(paymentStatus, paidPaisa, grandTotalPaisa) {
-  if (paymentStatus === "PAID") return "success";
-  if (paidPaisa > 0 && paidPaisa < grandTotalPaisa) return "warning";
-  return "error";
 }
 
 export default function ExpenseTrackerScreen({ onBack }) {
@@ -60,9 +49,12 @@ export default function ExpenseTrackerScreen({ onBack }) {
   }, [loadOrders]);
 
   const summary = computeSummary(orders);
+  const hasOrders = status === "ready" && orders.length > 0;
 
-  return (
-    <StackScreenShell title={t("expenseTracker.title")} subtitle={t("expenseTracker.subtitle")} onBack={onBack}>
+  const renderOrder = useCallback(({ item }) => <ExpenseOrderCard order={item} />, []);
+
+  const header = (
+    <View>
       <Button
         title={t("common.refresh")}
         onPress={loadOrders}
@@ -71,7 +63,6 @@ export default function ExpenseTrackerScreen({ onBack }) {
         fullWidth={false}
         style={styles.refreshButton}
       />
-
       <AsyncStateView
         status={status}
         error={error}
@@ -79,119 +70,113 @@ export default function ExpenseTrackerScreen({ onBack }) {
         isEmpty={!orders.length}
         emptyTitle={t("orders.empty")}
       />
+      {hasOrders ? (
+        <View style={styles.summaryRow}>
+          <View style={[styles.summaryCard, styles.summaryNeutral]}>
+            {/* Three cards across leaves ~58dp of text on a 320dp phone, so these values
+                shrink to fit rather than wrapping a currency amount mid-number. */}
+            <AppText
+              variant="h4"
+              style={styles.summaryValue}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
+              {summary.totalOrders}
+            </AppText>
+            <AppText variant="micro" tone="secondary" style={styles.summaryLabel}>
+              {t("expenseTracker.totalOrders")}
+            </AppText>
+          </View>
+          <View style={[styles.summaryCard, { backgroundColor: colors.success + "22" }]}>
+            <AppText
+              variant="h4"
+              tone="success"
+              style={styles.summaryValue}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
+              {formatBdt(paisaToBdt(summary.totalPaidPaisa), language)}
+            </AppText>
+            <AppText variant="micro" tone="success" style={styles.summaryLabel}>
+              {t("expenseTracker.totalPaid")}
+            </AppText>
+          </View>
+          <View style={[styles.summaryCard, { backgroundColor: colors.error + "22" }]}>
+            <AppText
+              variant="h4"
+              tone="error"
+              style={styles.summaryValue}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
+              {formatBdt(paisaToBdt(summary.totalDuePaisa), language)}
+            </AppText>
+            <AppText variant="micro" tone="error" style={styles.summaryLabel}>
+              {t("expenseTracker.totalDue")}
+            </AppText>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
 
-      {status === "ready" && orders.length > 0 ? (
-        <>
-          <View style={styles.summaryRow}>
-            <View style={[styles.summaryCard, styles.summaryNeutral]}>
-              <AppText variant="h2" style={styles.summaryValue}>
-                {summary.totalOrders}
-              </AppText>
-              <AppText variant="micro" tone="secondary" style={styles.summaryLabel}>
-                {t("expenseTracker.totalOrders")}
-              </AppText>
-            </View>
-            <View style={[styles.summaryCard, { backgroundColor: colors.success + "22" }]}>
-              <AppText variant="h2" tone="success" style={styles.summaryValue}>
+  const footer = hasOrders ? (
+    <Card style={styles.footerSummary}>
+      <SummaryRows
+        rows={[
+          {
+            label: t("expenseTracker.totalPaid"),
+            value: (
+              <AppText variant="h4" tone="success">
                 {formatBdt(paisaToBdt(summary.totalPaidPaisa), language)}
               </AppText>
-              <AppText variant="micro" tone="success" style={styles.summaryLabel}>
-                {t("expenseTracker.totalPaid")}
-              </AppText>
-            </View>
-            <View style={[styles.summaryCard, { backgroundColor: colors.error + "22" }]}>
-              <AppText variant="h2" tone="error" style={styles.summaryValue}>
+            ),
+          },
+          {
+            label: t("expenseTracker.totalDue"),
+            value: (
+              <AppText variant="h4" tone="error">
                 {formatBdt(paisaToBdt(summary.totalDuePaisa), language)}
               </AppText>
-              <AppText variant="micro" tone="error" style={styles.summaryLabel}>
-                {t("expenseTracker.totalDue")}
-              </AppText>
-            </View>
-          </View>
+            ),
+          },
+        ]}
+      />
+    </Card>
+  ) : null;
 
-          {orders.map((order) => {
-            const paid = Number(order.paidPaisa || 0);
-            const due = Number(order.outstandingPaisa || 0);
-            const grand = Number(order.grandTotalPaisa);
-            const statusTone = paymentStatusTone(order.paymentStatus, paid, grand);
-            const statusLabel = paymentStatusLabel(order.paymentStatus, paid, grand, t);
-
-            return (
-              <Card key={String(order.id)} style={styles.orderCard}>
-                <View style={styles.orderHeader}>
-                  <AppText variant="bodyStrong">{order.orderNumber}</AppText>
-                  <AppText variant="caption" tone="secondary">
-                    {formatDate(order.createdAt, language)}
-                  </AppText>
-                </View>
-                <SummaryRows
-                  rows={[
-                    { label: t("expenseTracker.total"), value: formatBdt(paisaToBdt(grand), language) },
-                  ]}
-                />
-                <View style={styles.balanceRow}>
-                  <View style={styles.balanceItem}>
-                    <AppText variant="micro" tone="secondary">
-                      {t("expenseTracker.paid")}
-                    </AppText>
-                    <AppText variant="bodySm" tone="success" style={styles.balanceValue}>
-                      {formatBdt(paisaToBdt(paid), language)}
-                    </AppText>
-                  </View>
-                  <View style={styles.balanceDivider} />
-                  <View style={styles.balanceItem}>
-                    <AppText variant="micro" tone="secondary">
-                      {t("expenseTracker.due")}
-                    </AppText>
-                    <AppText
-                      variant="bodySm"
-                      tone={due > 0 ? "error" : "success"}
-                      style={styles.balanceValue}
-                    >
-                      {formatBdt(paisaToBdt(due), language)}
-                    </AppText>
-                  </View>
-                  <View style={styles.balanceDivider} />
-                  <View style={styles.balanceItem}>
-                    <AppText variant="label" tone={statusTone}>
-                      {statusLabel}
-                    </AppText>
-                  </View>
-                </View>
-              </Card>
-            );
-          })}
-
-          <Card style={styles.footerSummary}>
-            <SummaryRows
-              rows={[
-                {
-                  label: t("expenseTracker.totalPaid"),
-                  value: (
-                    <AppText variant="h4" tone="success">
-                      {formatBdt(paisaToBdt(summary.totalPaidPaisa), language)}
-                    </AppText>
-                  ),
-                },
-                {
-                  label: t("expenseTracker.totalDue"),
-                  value: (
-                    <AppText variant="h4" tone="error">
-                      {formatBdt(paisaToBdt(summary.totalDuePaisa), language)}
-                    </AppText>
-                  ),
-                },
-              ]}
-            />
-          </Card>
-        </>
-      ) : null}
+  return (
+    <StackScreenShell
+      title={t("expenseTracker.title")}
+      subtitle={t("expenseTracker.subtitle")}
+      onBack={onBack}
+      scrollable={false}
+    >
+      <FlatList
+        data={hasOrders ? orders : []}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={renderOrder}
+        ListHeaderComponent={header}
+        ListFooterComponent={footer}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        removeClippedSubviews
+      />
     </StackScreenShell>
   );
 }
 
 const getStyles = (colors) =>
   StyleSheet.create({
+    listContent: {
+      paddingBottom: spacing.xxl,
+    },
     refreshButton: {
       alignSelf: "flex-end",
       marginBottom: spacing.md,
@@ -218,35 +203,6 @@ const getStyles = (colors) =>
       textTransform: "uppercase",
       letterSpacing: 0.5,
       textAlign: "center",
-    },
-    orderCard: {
-      marginBottom: spacing.lg - 2,
-    },
-    orderHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: spacing.sm + 2,
-    },
-    balanceRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingTop: spacing.sm + 2,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-    },
-    balanceItem: {
-      flex: 1,
-      alignItems: "center",
-    },
-    balanceDivider: {
-      width: 1,
-      height: 28,
-      backgroundColor: colors.border,
-    },
-    balanceValue: {
-      fontWeight: "800",
-      marginTop: 3,
     },
     footerSummary: {
       marginTop: spacing.xs,

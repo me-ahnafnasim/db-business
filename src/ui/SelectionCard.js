@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import { StyleSheet, View } from "react-native";
 
 import { spacing, useStyles } from "../theme";
@@ -11,7 +13,7 @@ import Card from "./Card";
 // Exposes accessibilityRole="radio" with selected state, so the choice is not conveyed by
 // border colour alone.
 
-export default function SelectionCard({
+function SelectionCard({
   selected = false,
   onPress,
   title,
@@ -89,3 +91,5 @@ const getStyles = (colors) =>
       marginTop: spacing.xs,
     },
   });
+
+export default memo(SelectionCard);

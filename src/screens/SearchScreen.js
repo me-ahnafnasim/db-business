@@ -3,10 +3,9 @@ import { FlatList, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import ScreenShell from "../components/ScreenShell";
+import StackScreenShell from "../components/StackScreenShell";
 import CatalogProductCard from "../features/catalog/components/CatalogProductCard";
 import { getFilteredProducts } from "../features/catalog/utils/catalogSelectors";
-import { TAB_KEYS } from "../data/tabs";
 import { useResponsiveGrid } from "../hooks/useResponsiveGrid";
 import { radius, spacing, useStyles, useTheme } from "../theme";
 import { AppText, EmptyState, IconButton } from "../ui";
@@ -20,25 +19,20 @@ function useDebounce(value, delay) {
   return debounced;
 }
 
-export default function SearchScreen({
-  activeTab,
-  onTabPress,
-  onProfilePress,
-  onSearchPress,
-  onCartPress,
-  catalog,
-  onOpenProduct,
-  cartCount,
-  auth,
-}) {
+// Opened from the header rather than living in the tab bar — searching is an action, not a
+// destination. The query is owned by MainTabs so it survives opening a product from the
+// results and coming back, which a pushed screen would otherwise lose on unmount.
+export default function SearchScreen({ catalog, onOpenProduct, onBack, query, onQueryChange }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const grid = useResponsiveGrid();
   const styles = useStyles(getStyles);
-  const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
   const inputRef = useRef(null);
-  const results = useMemo(() => getFilteredProducts(catalog.categories, debouncedQuery), [catalog.categories, debouncedQuery]);
+  const results = useMemo(
+    () => getFilteredProducts(catalog.categories, debouncedQuery),
+    [catalog.categories, debouncedQuery]
+  );
   const renderProduct = useCallback(
     ({ item }) => <CatalogProductCard product={item} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />,
     [grid.cardWidth, onOpenProduct]
@@ -48,29 +42,20 @@ export default function SearchScreen({
     [grid.columns, grid.gap, styles.row]
   );
 
+  // Focus on open, but only for a fresh search — coming back from a product should show the
+  // results already there, not throw the keyboard over them.
+  const shouldAutoFocus = useRef(!query);
   useEffect(() => {
-    if (activeTab !== TAB_KEYS.SEARCH) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      inputRef.current?.focus();
-    }, 80);
-
+    if (!shouldAutoFocus.current) return undefined;
+    const timer = setTimeout(() => inputRef.current?.focus(), 80);
     return () => clearTimeout(timer);
-  }, [activeTab]);
+  }, []);
 
   return (
-    <ScreenShell
-      activeTab={activeTab}
-      onTabPress={onTabPress}
-      onProfilePress={onProfilePress}
-      onSearchPress={onSearchPress}
-      onCartPress={onCartPress}
-      cartCount={cartCount}
-      auth={auth}
+    <StackScreenShell
       title={t("search.title")}
       subtitle={t("search.subtitle")}
+      onBack={onBack}
       scrollable={false}
     >
       <View style={styles.content}>
@@ -90,7 +75,7 @@ export default function SearchScreen({
               size="sm"
               tone="plain"
               onPress={() => {
-                setQuery("");
+                onQueryChange("");
                 inputRef.current?.focus();
               }}
             >
@@ -102,7 +87,7 @@ export default function SearchScreen({
           ref={inputRef}
           style={styles.hiddenInput}
           value={query}
-          onChangeText={setQuery}
+          onChangeText={onQueryChange}
         />
         <AppText variant="bodySm" tone="secondary" style={styles.resultText}>
           {t("search.results", { count: results.length })}
@@ -122,10 +107,12 @@ export default function SearchScreen({
           removeClippedSubviews
         />
       </View>
-    </ScreenShell>
+    </StackScreenShell>
   );
 }
 
+// No horizontal gutters here — StackScreenShell's fixedContent already applies them, unlike
+// the ScreenShell this screen used while it was a tab.
 const getStyles = (colors) =>
   StyleSheet.create({
     content: {
@@ -135,7 +122,6 @@ const getStyles = (colors) =>
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: colors.surface,
-      marginHorizontal: spacing.gutter,
       marginBottom: spacing.lg - 2,
       paddingHorizontal: spacing.lg + 2,
       paddingVertical: spacing.lg - 2,
@@ -149,7 +135,7 @@ const getStyles = (colors) =>
     },
     // The real input is kept offscreen and driven by the pressable above it. Replacing
     // this with a plain TextInput is tracked in UI_IMPROVEMENT_REPORT.md — it changes
-    // focus and state wiring, so it is out of scope for a UI-only pass.
+    // focus and state wiring, so it is out of scope here.
     hiddenInput: {
       position: "absolute",
       width: 1,
@@ -157,11 +143,9 @@ const getStyles = (colors) =>
       opacity: 0,
     },
     resultText: {
-      marginHorizontal: spacing.gutter,
       marginBottom: spacing.sm + 2,
     },
     list: {
-      paddingHorizontal: spacing.gutter,
       paddingBottom: spacing.xxl,
     },
     row: {

@@ -15,6 +15,9 @@ export const darkColors = {
   muted: "#64748b",
   success: "#4ade80",
   warning: "#fbbf24",
+  // Ink for text and icons sitting ON a warning surface. Both palettes use an amber
+  // warning, so both take the same dark ink — white on amber fails contrast in either.
+  onWarning: "#0a0e27",
   tabInactive: "#94a3b8",
   tabPressedBackground: "#1b263b",
   headerIconPressedBackground: "#1b263b",
@@ -64,6 +67,7 @@ export const lightColors = {
   muted: "#94a3b8",
   success: "#22c55e",
   warning: "#f59e0b",
+  onWarning: "#0a0e27",
   tabInactive: "#6b7280",
   tabPressedBackground: "#f3ead0",
   headerIconPressedBackground: "#f3ead0",

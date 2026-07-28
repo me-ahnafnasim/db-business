@@ -3,15 +3,16 @@ import Feather from "@expo/vector-icons/Feather";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  Easing,
   FlatList,
   ImageBackground,
   StyleSheet,
   useWindowDimensions,
   View,
 } from "react-native";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useTranslation } from "react-i18next";
 
+import { useIsAppForeground } from "../hooks/useIsAppForeground";
 import { radius, spacing, useStyles, useTheme } from "../theme";
 import { AppText, IconButton } from "../ui";
 
@@ -26,17 +27,35 @@ const ICON_ON_IMAGE = "rgba(255, 255, 255, 0.9)";
 const ARROW_BACKGROUND = "rgba(0, 0, 0, 0.45)";
 const DOT_INACTIVE = "rgba(0, 0, 0, 0.28)";
 
-export default function BannerCarousel({ slides }) {
+export default function BannerCarousel({ slides, active = true }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const foreground = useIsAppForeground();
   const styles = useStyles(getStyles);
   const { width } = useWindowDimensions();
   const slideWidth = width - 40;
   const slideHeight = slideWidth / (920 / 520);
   const scrollX = useRef(new Animated.Value(0)).current;
+  // The pagination dots animate `width`, which is a layout property and therefore can
+  // never run on the native driver. Keeping them on `scrollX` forced the whole carousel —
+  // including the slide opacity, scale and parallax — onto the JS thread at 60 callbacks
+  // per second. They now ride a separate value stepped discretely per slide, which frees
+  // `scrollX` to be fully native while keeping the pill geometry exactly as it was.
+  const dotProgress = useRef(new Animated.Value(0)).current;
   const listRef = useRef(null);
   const currentIndexRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const animation = Animated.timing(dotProgress, {
+      toValue: activeIndex,
+      duration: 220,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [activeIndex, dotProgress]);
 
   const safeSlides = useMemo(() => slides ?? [], [slides]);
 
@@ -57,8 +76,10 @@ export default function BannerCarousel({ slides }) {
     [safeSlides, slideWidth]
   );
 
+  // Auto-advance only while visible and foregrounded. This previously kept scrolling an
+  // invisible list every 3.2 s for the entire session, because the Home tab never unmounts.
   useEffect(() => {
-    if (safeSlides.length <= 1) {
+    if (safeSlides.length <= 1 || !active || !foreground) {
       return undefined;
     }
 
@@ -67,7 +88,7 @@ export default function BannerCarousel({ slides }) {
     }, 3200);
 
     return () => clearInterval(interval);
-  }, [goToSlide, safeSlides.length]);
+  }, [active, foreground, goToSlide, safeSlides.length]);
 
   const handleMomentumEnd = useCallback(
     (event) => {
@@ -104,7 +125,7 @@ export default function BannerCarousel({ slides }) {
       const content = (showIcon) => (
         <Animated.View style={[styles.bannerContent, { transform: [{ translateY }] }]}>
           {showIcon ? (
-            <MaterialCommunityIcons name="shoe-sneaker" size={42} color={ICON_ON_IMAGE} style={styles.bannerIcon} />
+            <Feather name="shopping-bag" size={38} color={ICON_ON_IMAGE} style={styles.bannerIcon} />
           ) : null}
           <AppText variant="body" style={styles.bannerSubtitle}>
             {item.subtitle}
@@ -149,7 +170,7 @@ export default function BannerCarousel({ slides }) {
         renderItem={renderItem}
         onMomentumScrollEnd={handleMomentumEnd}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
-          useNativeDriver: false,
+          useNativeDriver: true,
         })}
         scrollEventThrottle={16}
       />
@@ -174,17 +195,13 @@ export default function BannerCarousel({ slides }) {
 
       <View style={styles.pagination}>
         {safeSlides.map((slide, index) => {
-          const inputRange = [
-            (index - 1) * slideWidth,
-            index * slideWidth,
-            (index + 1) * slideWidth,
-          ];
-          const widthAnim = scrollX.interpolate({
+          const inputRange = [index - 1, index, index + 1];
+          const widthAnim = dotProgress.interpolate({
             inputRange,
             outputRange: [18, 58, 18],
             extrapolate: "clamp",
           });
-          const opacityAnim = scrollX.interpolate({
+          const opacityAnim = dotProgress.interpolate({
             inputRange,
             outputRange: [0.5, 1, 0.5],
             extrapolate: "clamp",
