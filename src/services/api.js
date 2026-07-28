@@ -236,8 +236,9 @@ export async function createOrder(orderData) {
   return request('POST', '/orders', orderData);
 }
 
-export async function getClientOrders() {
-  return request('GET', '/client/orders');
+export async function getClientOrders(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  return request('GET', `/client/orders${query ? `?${query}` : ''}`);
 }
 
 export async function getClientOrder(id) {

@@ -76,6 +76,7 @@
     "browseAll": "পাইকারি বিক্রয়ের সব পণ্য দেখুন",
     "categorySummary": "{{description}} · {{count}}টি পণ্য",
     "loadingMore": "আরও পণ্য লোড হচ্ছে…",
+    "showingCount": "{{total}}টির মধ্যে {{shown}}টি দেখানো হচ্ছে",
     "noProducts": "কোনো পণ্য পাওয়া যায়নি।",
     "detailsTitle": "পণ্যের বিস্তারিত",
     "detailsSubtitle": "কার্টে যোগ করার আগে পণ্যের অপশন বেছে নিন",
@@ -368,6 +369,7 @@
   "errors": {
     "storeUnavailable": "স্টোর পাওয়া যাচ্ছে না",
     "loadStore": "পণ্য ও কার্ট লোড করা যায়নি।",
+    "loadProduct": "এই পণ্যের বিবরণ লোড করা যায়নি।",
     "updateCart": "কার্ট আপডেট করা যায়নি।",
     "addProduct": "পণ্যটি যোগ করা যায়নি।",
     "placeOrder": "অর্ডারটি করা যায়নি।",

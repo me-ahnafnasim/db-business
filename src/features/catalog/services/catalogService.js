@@ -1,4 +1,4 @@
-import { getProducts } from "../../../services/api";
+import { getProduct, getProducts } from "../../../services/api";
 import { paisaToBdt } from "../../../utils/money";
 
 const FALLBACK_IMAGE = "https://placehold.co/600x420/png?text=NoboSole";
@@ -69,6 +69,69 @@ export function mapApiProduct(product, festivalCampaign = null) {
   };
 }
 
+// The grid-card shape, mapped from `view=card`.
+//
+// The catalog list used to carry a full detail payload for every product — every variant,
+// every image, both description columns — because one `formatProduct` served both endpoints.
+// Measured against the live catalogue that was 2,545 bytes per product; this is ~348. Over a
+// 100-product refresh, and that refresh fires on every foreground-after-stale and every
+// catalog_revision bump, it is the difference between ~254 KB and ~34 KB.
+//
+// What a card cannot see, it no longer downloads: variants, the image array, descriptions and
+// colour names all arrive later via fetchProductDetail, only for the product actually opened.
+export function mapApiProductCard(product, festivalCampaign = null) {
+  const originalPricePaisa = Number(product.pricePerDozenPaisa || 0);
+  const pricePaisa = discountedPaisa(originalPricePaisa, festivalCampaign);
+
+  // `view=card` sends one image (already ordered isPrimary, then sortOrder server-side) and an
+  // `availability` summary built from active variants only. Both counts below come off that
+  // summary, so the card needs no field the dashboard was not already asking for.
+  const availability = product.availability || [];
+
+  return {
+    id: String(product.id),
+    name: product.name,
+    nameBn: product.nameBn,
+    image: product.images?.[0]?.imageUrl || FALLBACK_IMAGE,
+    price: paisaToBdt(pricePaisa),
+    originalPrice: paisaToBdt(originalPricePaisa),
+    discountPercent: Number(festivalCampaign?.discountPercent || 0),
+    moq: Number(product.minimumOrderDozen || 1),
+    categoryName: "All Products",
+    productCode: product.productCode || "",
+    isFeatured: Boolean(product.isFeatured),
+    isPopular: Boolean(product.isPopular),
+    // The count, not the collection. buildCatalog only ever asked "does this product have a
+    // sellable variant", which availability answers without shipping ~20 variant objects per
+    // product. Deliberately no `images` key: ProductSummaryCard tests `product.images?.length`
+    // and falls back to the single `image` above, which is what a seeded details screen wants.
+    variantCount: availability.reduce((total, item) => total + (item.sizeCodes?.length || 0), 0),
+  };
+}
+
+// Details are fetched per product, not carried for all 100 up front. `getProduct` has existed
+// in api.js since the beginning and was never once called — the details screen was fed the
+// already-mapped list object, which is precisely why the list had to be detail-shaped.
+//
+// Cached because opening the same product twice is common (tap through, back, tap again) and
+// the payload is immutable between catalog revisions.
+// The cache holds the RAW response, not the mapped product. Mapping bakes the festival
+// discount into `price`, so caching the mapped object would serve a stale discount for as
+// long as the entry lived — a campaign starting or ending mid-session would leave the details
+// screen quoting the old figure while the grid card behind it quoted the new one.
+const detailCache = new Map();
+
+export async function fetchProductDetail(id, festivalCampaign = null) {
+  const key = String(id);
+  let raw = detailCache.get(key);
+  if (!raw) {
+    const response = await getProduct(key);
+    raw = response.data;
+    detailCache.set(key, raw);
+  }
+  return mapApiProduct(raw, festivalCampaign);
+}
+
 // Fetching is split from mapping so the caller can issue every request in one parallel
 // batch and apply the festival discount afterwards, instead of waiting for the storefront
 // response just to learn a discount percentage. The mapping below is unchanged.
@@ -76,12 +139,20 @@ export function mapApiProduct(product, festivalCampaign = null) {
 // been deleted — the home rails are now editorial flags that already ride along on every
 // product in this response.
 export async function fetchCatalogRaw() {
-  const response = await getProducts({ page: 1, limit: 100, isActive: true });
+  // Every catalog (re)load invalidates the detail cache. loadStore is the only thing that
+  // calls this, and it runs on exactly the events that can have changed a product — cold
+  // start, catalog_revision, and foreground-after-stale — so no separate subscription is
+  // needed to keep the two in step.
+  detailCache.clear();
+  const response = await getProducts({ page: 1, limit: 100, isActive: true, view: "card" });
   return { response };
 }
 
 export function buildCatalog({ response }, festivalCampaign = null) {
-  const products = (response.data || []).filter(Boolean).map((product) => mapApiProduct(product, festivalCampaign)).filter((product) => product.variants.length);
+  // The gate is unchanged in intent — hide anything with no sellable variant — but it now
+  // reads a count the server computed instead of measuring an array the card no longer
+  // carries. The server counts active variants only, matching what mapApiProduct filtered for.
+  const products = (response.data || []).filter(Boolean).map((product) => mapApiProductCard(product, festivalCampaign)).filter((product) => product.variantCount);
 
   // Both home rails are just filters over the catalog we already have. Empty is a valid
   // result and means the admin has curated nothing — HomeScreen hides the rail rather than

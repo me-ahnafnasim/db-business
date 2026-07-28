@@ -35,7 +35,7 @@ export default function ExpenseTrackerScreen({ onBack }) {
     setStatus("loading");
     setError("");
     try {
-      const response = await getClientOrders();
+      const response = await getClientOrders({ view: "summary", limit: 100 });
       setOrders(response.data || []);
       setStatus("ready");
     } catch (loadError) {

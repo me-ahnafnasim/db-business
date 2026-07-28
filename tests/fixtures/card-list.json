@@ -1,0 +1,228 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": 5,
+      "productCode": "NSP-000005",
+      "name": "hrtg",
+      "nameBn": "gdrfegderfg",
+      "pricePerDozenPaisa": 500000,
+      "minimumOrderDozen": 1,
+      "requiredColorsPerDozen": 1,
+      "requiredSizesPerDozen": 6,
+      "availability": [
+        {
+          "colorCode": "BLACK",
+          "sizeCodes": [
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        },
+        {
+          "colorCode": "GREEN",
+          "sizeCodes": [
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "id": 12,
+          "imageUrl": "https://res.cloudinary.com/c23w5xx4/image/upload/v1785267880/nobosole/products/evgvea7hbcb6aeezttej.jpg",
+          "altText": null,
+          "sortOrder": 0,
+          "isPrimary": true
+        }
+      ],
+      "isActive": true,
+      "isFeatured": false,
+      "isPopular": true
+    },
+    {
+      "id": 4,
+      "productCode": "DFD-333",
+      "name": "dfd",
+      "nameBn": "dfds",
+      "pricePerDozenPaisa": 160000,
+      "minimumOrderDozen": 1,
+      "requiredColorsPerDozen": 1,
+      "requiredSizesPerDozen": 4,
+      "availability": [
+        {
+          "colorCode": "BLACK",
+          "sizeCodes": [
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "id": 11,
+          "imageUrl": "https://res.cloudinary.com/c23w5xx4/image/upload/v1785261488/nobosole/products/pjflhkowbzspjkfalkih.jpg",
+          "altText": null,
+          "sortOrder": 0,
+          "isPrimary": true
+        }
+      ],
+      "isActive": true,
+      "isFeatured": true,
+      "isPopular": false
+    },
+    {
+      "id": 3,
+      "productCode": "BVS-3",
+      "name": "Women's stylish sandal",
+      "nameBn": "নারীদের স্টাইলিশ স্যান্ডেল",
+      "pricePerDozenPaisa": 150000,
+      "minimumOrderDozen": 1,
+      "requiredColorsPerDozen": 1,
+      "requiredSizesPerDozen": 3,
+      "availability": [
+        {
+          "colorCode": "BLACK",
+          "sizeCodes": [
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        },
+        {
+          "colorCode": "NAVY",
+          "sizeCodes": [
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        },
+        {
+          "colorCode": "BLUE",
+          "sizeCodes": [
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "id": 10,
+          "imageUrl": "https://res.cloudinary.com/c23w5xx4/image/upload/v1784998349/nobosole/products/ionzgzhcothfu87bv38j.jpg",
+          "altText": "ciao",
+          "sortOrder": 0,
+          "isPrimary": true
+        }
+      ],
+      "isActive": true,
+      "isFeatured": false,
+      "isPopular": false
+    },
+    {
+      "id": 2,
+      "productCode": "BLC-2",
+      "name": "Soft and fashionable women's Ungta sandle, shoe, juta, jutti with crab sole",
+      "nameBn": "Soft and fashionable women's Ungta sandle, shoe, juta, jutti with crab sole",
+      "pricePerDozenPaisa": 150000,
+      "minimumOrderDozen": 1,
+      "requiredColorsPerDozen": 1,
+      "requiredSizesPerDozen": 1,
+      "availability": [
+        {
+          "colorCode": "BLACK",
+          "sizeCodes": [
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        },
+        {
+          "colorCode": "BLUE",
+          "sizeCodes": [
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        },
+        {
+          "colorCode": "RED",
+          "sizeCodes": [
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        },
+        {
+          "colorCode": "WHITE",
+          "sizeCodes": [
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        },
+        {
+          "colorCode": "PINK",
+          "sizeCodes": [
+            "36",
+            "37",
+            "38",
+            "39",
+            "40",
+            "41"
+          ]
+        }
+      ],
+      "images": [
+        {
+          "id": 4,
+          "imageUrl": "https://res.cloudinary.com/c23w5xx4/image/upload/v1784984773/nobosole/products/sqd7hpm1flzknngkbpgv.jpg",
+          "altText": null,
+          "sortOrder": 0,
+          "isPrimary": true
+        }
+      ],
+      "isActive": true,
+      "isFeatured": false,
+      "isPopular": false
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 100,
+    "totalPages": 1,
+    "total": 4
+  }
+}

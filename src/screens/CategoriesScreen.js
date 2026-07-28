@@ -3,14 +3,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import ScreenShell from "../components/ScreenShell";
-import CategoryFilterBar from "../features/catalog/components/CategoryFilterBar";
 import CatalogProductCard from "../features/catalog/components/CatalogProductCard";
 import { getCategoryById, getFilteredProducts } from "../features/catalog/utils/catalogSelectors";
 import { useResponsiveGrid } from "../hooks/useResponsiveGrid";
 import { spacing, useStyles } from "../theme";
 import { AppText, EmptyState } from "../ui";
 
-const PAGE_SIZE = 14;
+// Ten at a time, revealed on scroll. Client-side on purpose: the catalogue is already fully
+// in memory — fetchCatalogRaw pulls limit:100 once and MainTabs shares it with Home, this
+// screen and Search — so paging the server here would add requests while the bulk fetch
+// carried on anyway. That only becomes the right trade once the app stops bulk-loading.
+const PAGE_SIZE = 10;
 
 export default function CategoriesScreen({
   activeTab,
@@ -20,7 +23,6 @@ export default function CategoriesScreen({
   onCartPress,
   catalog,
   selectedCategoryId,
-  onSelectCategory,
   onOpenProduct,
   cartCount,
   auth,
@@ -51,9 +53,11 @@ export default function CategoriesScreen({
     ({ item }) => <CatalogProductCard product={item} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />,
     [grid.cardWidth, onOpenProduct]
   );
-  const footer = products.length > visibleCount ? (
+  // A count rather than a bare "loading more", so it is obvious there is more to come and
+  // roughly how much. Hidden once everything is on screen.
+  const footer = products.length > visibleProducts.length ? (
     <AppText variant="bodySm" tone="secondary" style={styles.footerText}>
-      {t("catalog.loadingMore")}
+      {t("catalog.showingCount", { shown: visibleProducts.length, total: products.length })}
     </AppText>
   ) : null;
   const columnWrapper = useMemo(
@@ -79,11 +83,10 @@ export default function CategoriesScreen({
       scrollable={false}
     >
       <View style={styles.content}>
-        <CategoryFilterBar
-          categories={catalog.categories}
-          activeCategoryId={selectedCategoryId}
-          onSelectCategory={onSelectCategory}
-        />
+        {/* The filter bar is gone. It offered "All" and "All Products", which resolved to
+            byte-identical lists because the catalogue has exactly one synthetic category —
+            there is no category concept anywhere in the server. Two controls that did
+            nothing read as broken; a plain paginated grid is what this screen actually is. */}
         <FlatList
           data={visibleProducts}
           keyExtractor={(item, index) => item?.id ?? String(index)}

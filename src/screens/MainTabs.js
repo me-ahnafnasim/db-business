@@ -592,6 +592,7 @@ export default function MainTabs({ auth, onSignOut }) {
             onBack={popScreen}
             onAddConfiguredProduct={handleAddConfiguredProduct}
             onContactSupport={handleContactSupport}
+            festivalCampaign={storefront.activeFestivalDiscount}
           />
         );
       case STACK_ROUTES.SHIPPING:
@@ -674,7 +675,6 @@ export default function MainTabs({ auth, onSignOut }) {
             storefront={storefront}
             festivalCampaign={storefront.activeFestivalDiscount}
             selectedCategoryId={selectedCategoryId}
-            onSelectCategory={setSelectedCategoryId}
             onViewCategory={handleViewCategory}
             onOpenProduct={handleOpenProduct}
             cartItems={cartItems}

@@ -76,6 +76,7 @@
     "browseAll": "Browse all available wholesale footwear",
     "categorySummary": "{{description}} · {{count}} products",
     "loadingMore": "Loading more products…",
+    "showingCount": "Showing {{shown}} of {{total}}",
     "noProducts": "No products found.",
     "detailsTitle": "Product Details",
     "detailsSubtitle": "Choose product options before adding to cart",
@@ -368,6 +369,7 @@
   "errors": {
     "storeUnavailable": "Store unavailable",
     "loadStore": "Could not load products and cart.",
+    "loadProduct": "Could not load this product's details.",
     "updateCart": "Could not update the cart.",
     "addProduct": "Could not add this product.",
     "placeOrder": "Could not place this order.",
