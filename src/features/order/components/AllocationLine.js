@@ -3,6 +3,7 @@ import { memo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useLanguage } from "../../../i18n/LanguageProvider";
+import { getColorLabel } from "../../../i18n/product";
 import { AppText } from "../../../ui";
 
 // One "colour · size · pairs" line of a dozen-pack breakdown.
@@ -15,8 +16,7 @@ function AllocationLine({ allocation, colorNames, variant = "caption" }) {
   const { language } = useLanguage();
   const { t } = useTranslation();
 
-  const colorLabel =
-    (language === "bn" && colorNames?.[allocation.colorCode]?.bn) || allocation.colorCode;
+  const colorLabel = getColorLabel(allocation.colorCode, colorNames, language);
 
   return (
     <AppText variant={variant} tone="secondary">

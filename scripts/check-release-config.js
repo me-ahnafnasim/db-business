@@ -108,6 +108,21 @@ for (const page of ["privacy", "terms", "returns", "account-deletion"]) {
   requireFile(`public/${page}/index.html`);
 }
 
+// NOTE: EXPO_PUBLIC_WEB_URL is deliberately NOT checked here.
+//
+// It is `http://localhost:8081` in .env because local web development needs it — the Supabase
+// OAuth redirect has to come back to the dev server, and pinning it to production sent
+// sign-in to the deployed site instead.
+//
+// That value is also inlined into the APK at bundle time, so a device build made from this
+// machine carries localhost, and the Privacy / Terms / Returns / Delete Account links in
+// Profile open a dead address — which is what a Play reviewer taps. It is recorded as an open
+// blocker in ANDROID_RELEASE_READINESS.md rather than enforced here, because failing the
+// build would block the local workflow this value exists to serve.
+//
+// EAS builds do not upload .env (see .easignore), so a cloud build takes the value from the
+// EAS `production` environment. Set it there, and confirm on device before submitting.
+
 if (errors.length) {
   console.error("Release configuration check failed:");
   for (const error of errors) console.error(`  - ${error}`);

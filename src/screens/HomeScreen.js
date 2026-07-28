@@ -17,6 +17,16 @@ import { useLanguage } from "../i18n/LanguageProvider";
 // Gradients for the placeholder banners shown before the storefront returns managed
 // slides. They sit behind white display text and are the same in either theme, so they
 // are content rather than palette.
+// Every rail on this screen, not just one — one constant so the three cannot drift apart.
+//
+// Load-bearing: Home is a ScrollView with .map(), not a FlatList, so every card mounts and
+// stays mounted. The catalog fetches limit:100, and a product may carry both flags, so
+// uncapped this screen could hold 200 live cards. Capped it holds at most 18.
+//
+// Home is a landing page; the full list is one tap away through View All on each rail.
+// Convert this screen to a FlatList before raising this number.
+const HOME_RAIL_LIMIT = 6;
+
 const PLACEHOLDER_BANNER_GRADIENTS = {
   footwear: ["#0a0e27", "#7c5d12"],
   retailers: ["#0f2742", "#087a91"],
@@ -55,17 +65,34 @@ export default function HomeScreen({
       { id: "collection", title: t("home.banner3Title"), subtitle: t("home.banner3Subtitle"), colors: PLACEHOLDER_BANNER_GRADIENTS.collection },
     ];
   }, [language, storefront?.carouselSlides, t]);
-  const homeProducts = useMemo(() => {
-    return flattenProducts(catalog.categories)
-      .sort((leftProduct, rightProduct) => {
-        const leftRank = leftProduct.featuredRank ?? Number.MAX_SAFE_INTEGER;
-        const rightRank = rightProduct.featuredRank ?? Number.MAX_SAFE_INTEGER;
-        return leftRank - rightRank;
-      })
-      .slice(0, 16);
-  }, [catalog.categories]);
-  const topProducts = homeProducts.slice(0, 2);
-  const moreProducts = catalog.popularProducts?.length ? catalog.popularProducts : homeProducts.slice(2, 8);
+  // Both rails are curated in the dashboard now. This used to sort by `featuredRank`, which
+  // the client invented from array position — so "Featured Picks" was really just the two
+  // most recently created products, and "Popular Right Now" came from a lifetime sales
+  // aggregate. Neither reflected anyone's intent.
+  //
+  // An empty rail is a valid state: it means nothing is ticked, and the section is hidden
+  // rather than backfilled with something the admin did not choose.
+  // All three rails share the same cap. The curated two were previously unbounded on the
+  // grounds that ticking is deliberate — true, but it left nothing stopping 40 ticked
+  // products from mounting 40 cards on a screen that does not virtualise. View All on each
+  // rail reaches the rest.
+  const featuredProducts = useMemo(
+    () => (catalog.featuredProducts ?? []).slice(0, HOME_RAIL_LIMIT),
+    [catalog.featuredProducts]
+  );
+  // Everything in neither curated rail, so an unticked product still has somewhere to appear.
+  const newArrivals = useMemo(
+    () => (catalog.newArrivals ?? []).slice(0, HOME_RAIL_LIMIT),
+    [catalog.newArrivals]
+  );
+  const popularProducts = useMemo(
+    () => (catalog.popularProducts ?? []).slice(0, HOME_RAIL_LIMIT),
+    [catalog.popularProducts]
+  );
+  const hasProducts = useMemo(
+    () => flattenProducts(catalog.categories).length > 0,
+    [catalog.categories]
+  );
   const gridGap = useMemo(() => ({ gap: grid.gap }), [grid.gap]);
   // Home stays mounted once visited, so its timers need to know when it is the front tab.
   const isActive = activeTab === TAB_KEYS.HOME;
@@ -83,27 +110,50 @@ export default function HomeScreen({
       <BannerCarousel slides={bannerSlides} active={isActive} />
       <FestivalDiscountBanner campaign={festivalCampaign} active={isActive} />
       <View style={styles.featuredSection}>
-        {!homeProducts.length ? (
+        {/* The empty state now means "the catalog itself is empty", not "nothing is
+            featured" — an uncurated catalog full of products should still offer a way in. */}
+        {!hasProducts ? (
           <EmptyState title={t("home.noProductsTitle")} description={t("home.noProductsText")} />
         ) : (
           <>
-            <CatalogSectionHeader title={t("home.featured")} onPress={() => onViewCategory?.(null)} actionLabel={t("home.viewAll")} />
-            <View style={[styles.topRow, gridGap]}>
-              {topProducts.map((product, index) => (
-                <CatalogProductCard
-                  key={product?.id ?? `top-${index}`}
-                  product={product}
-                  cardWidth={grid.cardWidth}
-                  onOpenProduct={onOpenProduct}
-                />
-              ))}
-            </View>
-            <CatalogSectionHeader title={t("home.popular")} actionLabel="" />
-            <View style={[styles.grid, gridGap]}>
-              {moreProducts.map((product, index) => (
-                <CatalogProductCard key={product?.id ?? `more-${index}`} product={product} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />
-              ))}
-            </View>
+            {featuredProducts.length ? (
+              <>
+                <CatalogSectionHeader title={t("home.featured")} onPress={() => onViewCategory?.(null)} actionLabel={t("home.viewAll")} />
+                <View style={[styles.topRow, gridGap]}>
+                  {featuredProducts.map((product, index) => (
+                    <CatalogProductCard
+                      key={product?.id ?? `featured-${index}`}
+                      product={product}
+                      cardWidth={grid.cardWidth}
+                      onOpenProduct={onOpenProduct}
+                    />
+                  ))}
+                </View>
+              </>
+            ) : null}
+            {newArrivals.length ? (
+              <>
+                <CatalogSectionHeader title={t("home.newArrivals")} onPress={() => onViewCategory?.(null)} actionLabel={t("home.viewAll")} />
+                <View style={[styles.grid, gridGap]}>
+                  {newArrivals.map((product, index) => (
+                    <CatalogProductCard key={product?.id ?? `new-${index}`} product={product} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />
+                  ))}
+                </View>
+              </>
+            ) : null}
+            {popularProducts.length ? (
+              <>
+                {/* Gained a View All: with an empty actionLabel this rendered no action at
+                    all, which was fine when the rail showed everything ticked and misleading
+                    once it shows six of forty. */}
+                <CatalogSectionHeader title={t("home.popular")} onPress={() => onViewCategory?.(null)} actionLabel={t("home.viewAll")} />
+                <View style={[styles.grid, gridGap]}>
+                  {popularProducts.map((product, index) => (
+                    <CatalogProductCard key={product?.id ?? `popular-${index}`} product={product} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />
+                  ))}
+                </View>
+              </>
+            ) : null}
           </>
         )}
       </View>

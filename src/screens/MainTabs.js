@@ -24,7 +24,7 @@ import {
   replaceCartItem,
 } from "../features/cart/services/cartService";
 import { getCheckoutTotals } from "../features/checkout/utils/checkoutPricing";
-import { createOrder, getProfile, getStorefront } from "../services/api";
+import { createOrder, deleteAccount, getProfile, getStorefront } from "../services/api";
 import { paisaToBdt } from "../utils/money";
 import CartScreen from "./CartScreen";
 import CategoriesScreen from "./CategoriesScreen";
@@ -337,6 +337,20 @@ export default function MainTabs({ auth, onSignOut }) {
     () => pushScreen(STACK_ROUTES.HELP_CENTER),
     [pushScreen]
   );
+  // ProfileScreen owns the cross-platform confirmation and feedback dialog. This handler
+  // only performs the request and returns a display-ready result; the success dialog signs
+  // out after the customer acknowledges what was deleted.
+  const handleDeleteAccount = useCallback(async () => {
+    try {
+      await deleteAccount();
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: getLocalizedError(error, tRef.current, "errors.profileRefresh"),
+      };
+    }
+  }, []);
   const handleContactSupport = useCallback(() => {
     Linking.openURL(
       `https://wa.me/393202935579?text=${encodeURIComponent(
@@ -461,6 +475,9 @@ export default function MainTabs({ auth, onSignOut }) {
     setTabHistory([TAB_KEYS.HOME]);
     onSignOut?.();
   };
+  // Mirrored into a ref for the same reason handleContinueShopping is: handleDeleteAccount
+  // is a useCallback with empty deps declared above this, so it must not capture a single
+  // render's copy of a handler that closes over a prop.
 
   const handleContinueToPayment = () => {
     pushScreen(STACK_ROUTES.PAYMENT);
@@ -680,6 +697,7 @@ export default function MainTabs({ auth, onSignOut }) {
             onOrdersPress={handleOrdersPress}
             onExpenseTrackerPress={handleExpenseTrackerPress}
             onHelpCenterPress={handleHelpCenterPress}
+            onDeleteAccount={handleDeleteAccount}
           />
         </View>
         );

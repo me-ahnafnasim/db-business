@@ -82,12 +82,17 @@
 
 ## APK Size Optimization
 
-| Step | Saving |
-|------|--------|
-| Delete `temp-export-*` directories | ~10 MB |
-| Tighten `assetBundlePatterns` | ~3 MB |
-| ProGuard + shrinkResources | ~5 MB |
-| Single arch (`arm64-v8a` only) | ~10 MB |
-| Strip unused icon fonts | ~3 MB |
+> **Corrected 2026-07-28.** Two rows in the original table claimed savings that do not exist,
+> and the 70 MB baseline was never measured. Nothing in this repo has ever produced an APK.
 
-**Target:** ~30-40 MB (down from ~70 MB)
+| Step | Saving | Status |
+|------|--------|--------|
+| Delete `temp-export-*` directories | **~0 MB, not ~10 MB** | Metro bundles by reachability and `metro.config.js` blocklists these paths, so they contributed zero APK bytes. Untracked anyway — it is a ~14.7 MB *upload* saving on every EAS build, not a size one |
+| Strip unused icon fonts | **already banked, not ~3 MB pending** | Source imports only Feather + AntDesign; Metro ships 186,080 B, down from 1,937,520 B. The `clean:icons` script credited with this never deleted a byte and has been deleted |
+| ProGuard + shrinkResources | unmeasured | Enabled. `enableProguardInReleaseBuilds` renamed to `enableMinifyInReleaseBuilds` — the old key is absent from the plugin's schema and worked only through a compat shim |
+| Restrict ABIs | unmeasured | `buildArchs: ["arm64-v8a", "armeabi-v7a"]`. Drops emulator-only x86. **Affects the preview APK only** — production ships an AAB and Play already splits ABIs per device |
+| Tighten `assetBundlePatterns` | unmeasured | Still `["**/*"]` |
+
+**Target:** unknown until a build is measured. The "~70 MB" baseline below was an estimate with
+no artifact behind it — `find` across the repo and `~/Downloads` returns no `.apk` or `.aab`.
+Run `npm run build:preview`, then `unzip -l` the result and record real bytes by directory.

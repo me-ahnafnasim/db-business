@@ -1,4 +1,4 @@
-import { getPopularProducts, getProducts } from "../../../services/api";
+import { getProducts } from "../../../services/api";
 import { paisaToBdt } from "../../../utils/money";
 
 const FALLBACK_IMAGE = "https://placehold.co/600x420/png?text=NoboSole";
@@ -15,7 +15,9 @@ function discountedPaisa(value, campaign) {
   return percent > 0 ? Math.floor(Number(value) * (100 - percent) / 100) : Number(value);
 }
 
-export function mapApiProduct(product, index = 0, festivalCampaign = null) {
+// `index` is gone from the signature: it existed only to number products for the fake
+// featuredRank, and nothing else ever read it.
+export function mapApiProduct(product, festivalCampaign = null) {
   const variants = (product.variants || []).filter((variant) => variant.isActive);
   const originalPricePaisa = Number(product.pricePerDozenPaisa || 0);
   const pricePaisa = discountedPaisa(originalPricePaisa, festivalCampaign);
@@ -50,8 +52,11 @@ export function mapApiProduct(product, index = 0, festivalCampaign = null) {
     pairsPerDozen: Number(product.pairsPerDozen || 12),
     unitLabel: "dozen",
     categoryName: "All Products",
-    featuredRank: index + 1,
     isActive: product.isActive,
+    // Set by an admin in the dashboard. `featuredRank` used to live here, derived from the
+    // array index, which meant "Featured Picks" was really just the two newest products.
+    isFeatured: Boolean(product.isFeatured),
+    isPopular: Boolean(product.isPopular),
     colorNames: product.colorNames || {},
     variants,
     availability,
@@ -64,23 +69,29 @@ export function mapApiProduct(product, index = 0, festivalCampaign = null) {
 // Fetching is split from mapping so the caller can issue every request in one parallel
 // batch and apply the festival discount afterwards, instead of waiting for the storefront
 // response just to learn a discount percentage. The mapping below is unchanged.
+// One request, not two. The second call fetched /products/popular, whose sales aggregate has
+// been deleted — the home rails are now editorial flags that already ride along on every
+// product in this response.
 export async function fetchCatalogRaw() {
-  const [response, popularRes] = await Promise.all([
-    getProducts({ page: 1, limit: 100, isActive: true }),
-    getPopularProducts(6).catch(() => null),
-  ]);
-  return { response, popularRes };
+  const response = await getProducts({ page: 1, limit: 100, isActive: true });
+  return { response };
 }
 
-export function buildCatalog({ response, popularRes }, festivalCampaign = null) {
-  const products = (response.data || []).filter(Boolean).map((product, index) => mapApiProduct(product, index, festivalCampaign)).filter((product) => product.variants.length);
+export function buildCatalog({ response }, festivalCampaign = null) {
+  const products = (response.data || []).filter(Boolean).map((product) => mapApiProduct(product, festivalCampaign)).filter((product) => product.variants.length);
 
-  const popularData = popularRes?.data?.data || [];
-  const popularProducts = popularData.length
-    ? popularData
-        .map((p) => mapApiProduct(p, 0, festivalCampaign))
-        .filter((p) => p.variants.length)
-    : [];
+  // Both home rails are just filters over the catalog we already have. Empty is a valid
+  // result and means the admin has curated nothing — HomeScreen hides the rail rather than
+  // substituting anything.
+  const featuredProducts = products.filter((product) => product.isFeatured);
+  const popularProducts = products.filter((product) => product.isPopular);
+  // The complement of the two curated rails, so a product nobody has ticked still surfaces
+  // somewhere instead of only being reachable through Categories. Needs no third flag and no
+  // admin upkeep — it is defined by what the other two are not.
+  //
+  // Already newest-first: the catalog arrives ordered created_at DESC, which is exactly what
+  // the section name promises.
+  const newArrivals = products.filter((product) => !product.isFeatured && !product.isPopular);
 
   return {
     categories: [
@@ -94,6 +105,8 @@ export function buildCatalog({ response, popularRes }, festivalCampaign = null) 
       },
     ],
     pagination: response.pagination,
+    featuredProducts,
+    newArrivals,
     popularProducts,
   };
 }

@@ -161,12 +161,35 @@ so N clients stop hitting `/products` in the same window after an admin edit.
 
 ---
 
+## Measured JS payload — 2026-07-28
+
+The font figures above were projections when written. A fresh `expo export --platform android`
+confirms them:
+
+| | Committed `dist/` (2026-07-26) | Fresh export (2026-07-28) | Delta |
+|---|---|---|---|
+| Hermes bundle | 2,959,208 B | 2,879,372 B | −79,836 B |
+| Icon fonts | 1,937,520 B (5 families) | **186,080 B** (Feather + AntDesign) | **−1,751,440 B** |
+| **Total** | **4,896,728 B** | **3,077,468 B** | **−1,819,260 B (−37%)** |
+
+The committed `dist/` predates the icon consolidation and **overstated current size by
+~1.75 MB**. Metro bundles by reachability, so dropping the imports was the whole fix — no
+config and no cleanup script was involved.
+
+**Correction:** an earlier note recommended `npm run clean:icons` for "~2.7 MB". That script
+pointed at `node_modules/expo/node_modules/@expo/vector-icons/…`, which is not where the
+hoisted package lives; it hit its `existsSync` guard and exited 0 without deleting anything,
+every time. It has been removed. `SECURE-APK-PLAN.md`'s "~10 MB from deleting `temp-export-*`"
+was also wrong — those paths are blocklisted in `metro.config.js` and contribute zero APK
+bytes.
+
 ## Still outstanding
 
 ### Needs a real device or an EAS build
 
-The APK-level numbers in this report are **projections, not measurements**. Before trusting
-them, run:
+The **APK-level** numbers in this report remain **projections, not measurements** — no `.apk`
+or `.aab` has ever existed on disk. JS payload is now measured; total install size is not.
+Before trusting it, run:
 
 ```bash
 eas build --profile preview        # then: unzip -l the .apk, compare bytes by directory

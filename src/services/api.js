@@ -125,6 +125,14 @@ async function request(method, path, body = null, requestOptions = {}) {
       cachedAccessToken = null;
       sessionPrimed = true;
       await supabase.auth.signOut({ scope: 'local' });
+      // The refresh failed, so this session is finished. Thrown with a code rather than
+      // falling through to the generic branch below, which would produce an unlocalised
+      // "Request failed (401)." for the moment before the sign-out unmounts the screen.
+      // errors.sessionExpired existed for exactly this and was previously unreachable.
+      throw new ApiError('Your session has expired. Sign in again.', {
+        status: 401,
+        code: 'SESSION_REVOKED',
+      });
     }
 
     const requestId = data?.meta?.requestId || res.headers.get('x-request-id') || undefined;
@@ -158,6 +166,12 @@ export async function createProfile(profileData) {
 
 export async function updateProfile(profileData) {
   return request('PATCH', '/client/profile', normalizeProfileIds(profileData));
+}
+
+// Removes personal details and deactivates the account. Order records are retained, which is
+// what public/account-deletion/index.html tells the customer.
+export async function deleteAccount() {
+  return request('DELETE', '/client/profile');
 }
 
 function normalizeProfileIds(profileData) {
@@ -250,6 +264,5 @@ export async function getTopProducts(limit = 5) {
   return request('GET', `/analytics/top-products?limit=${limit}`);
 }
 
-export async function getPopularProducts(limit = 6) {
-  return request('GET', `/products/popular?limit=${limit}`);
-}
+// getPopularProducts is gone with the endpoint. "Popular Right Now" is now an editorial flag
+// carried on each product in the catalog response, so there is nothing extra to fetch.

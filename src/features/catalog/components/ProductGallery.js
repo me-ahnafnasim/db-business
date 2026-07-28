@@ -46,6 +46,10 @@ export default function ProductGallery({ productName, images = [], fallbackImage
         accessibilityLabel={item.altText || productName}
         borderRadius={fullscreen ? 0 : radius.card}
         style={fullscreen ? styles.fullscreenImage : undefined}
+        // Both the details frame and the fullscreen viewer exist so the buyer can inspect the
+        // product, so they must never crop it. ProductImage now defaults to "cover" for the
+        // grid and cart thumbnails, where a crop reads better than letterbox bars.
+        resizeMode="contain"
       />
     </Pressable>
   );

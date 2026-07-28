@@ -9,6 +9,7 @@ import { getLocalizedProduct } from "../../../i18n/product";
 import { spacing, useStyles, useTheme } from "../../../theme";
 import { AppText, Button, Card, IconButton } from "../../../ui";
 import { formatBdt } from "../../../utils/money";
+import { breakAnywhere } from "../../../utils/text";
 import AllocationLine from "../../order/components/AllocationLine";
 import ProductImage from "../../catalog/components/ProductImage";
 
@@ -41,22 +42,37 @@ function CartLineItem({ item, onEdit, onRemove }) {
           borderRadius={12}
         />
         <View style={styles.summary}>
-          <AppText numberOfLines={2} variant="bodyStrong">
-            {localizedItem.name}
+          {/* No numberOfLines. Real product names run long — "Soft and fashionable women's
+              Ungta sandle, shoes" — and a 2-line cap truncated them mid-word to "sho…". The
+              cart is a vertical list, so a taller row costs nothing: there is no grid to keep
+              aligned, and this is the screen where the buyer confirms exactly what they
+              ordered, so the full name is the point. */}
+          {/* Breaks mid-word where it has to, so a line fills to the edge instead of leaving
+              a gap when the next word will not fit. */}
+          <AppText variant="bodySm" accessibilityLabel={localizedItem.name}>
+            {breakAnywhere(localizedItem.name)}
           </AppText>
-          {item.discountPercent ? (
-            <AppText variant="caption" tone="secondary" style={styles.originalPrice}>
-              {formatBdt((item.unitPrice ?? item.price) * item.quantity, language)}
+          {/* Current price first, original after — it used to render the struck-through
+              original ABOVE the price being charged, which reads backwards. Same order and
+              same weights as the catalog card, so a product looks like itself in both places. */}
+          <View style={styles.priceRow}>
+            <AppText numberOfLines={1} variant="bodyStrong">
+              {formatBdt((item.discountedUnitPrice ?? item.unitPrice ?? item.price) * item.quantity, language)}
             </AppText>
-          ) : null}
-          <AppText variant="h3" style={styles.price}>
-            {formatBdt((item.discountedUnitPrice ?? item.unitPrice ?? item.price) * item.quantity, language)}
-          </AppText>
+            {item.discountPercent ? (
+              <AppText numberOfLines={1} variant="caption" tone="secondary" style={styles.originalPrice}>
+                {formatBdt((item.unitPrice ?? item.price) * item.quantity, language)}
+              </AppText>
+            ) : null}
+          </View>
         </View>
       </View>
 
       <View style={styles.pack}>
-        <AppText variant="caption" tone="secondary">
+        {/* This heading used to be caption/secondary — byte-identical to the allocation lines
+            underneath it, so it disappeared into its own list and the block read as five
+            interchangeable grey rows. */}
+        <AppText variant="micro" tone="muted" style={styles.packLabel}>
           {t("cart.packRecipe")}
         </AppText>
         {(item.allocations || []).map((allocation) => (
@@ -85,7 +101,7 @@ function CartLineItem({ item, onEdit, onRemove }) {
       ) : null}
 
       <View style={styles.actions}>
-        <AppText variant="bodySm" tone="secondary" style={styles.quantity} numberOfLines={1}>
+        <AppText variant="micro" tone="secondary" style={styles.quantity} numberOfLines={1}>
           {t("cart.quantityDozen", { count: item.quantity })}
         </AppText>
         <Button
@@ -117,7 +133,11 @@ const getStyles = (colors) =>
     },
     identity: {
       flexDirection: "row",
-      alignItems: "center",
+      // Top-aligned, not centred. Centring floated the text block against the 72dp thumbnail
+      // — a short name sat low with dead space above it, and now that the name can run to
+      // three or four lines it would push the image to the middle of a tall column. The name
+      // should start level with the top of the image.
+      alignItems: "flex-start",
       gap: spacing.md,
       padding: spacing.md,
     },
@@ -128,18 +148,26 @@ const getStyles = (colors) =>
     summary: {
       flex: 1,
     },
-    originalPrice: {
-      textDecorationLine: "line-through",
+    priceRow: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      flexWrap: "wrap",
+      gap: spacing.sm - 2,
       marginTop: spacing.xs,
     },
-    price: {
-      marginTop: spacing.xs,
+    originalPrice: {
+      textDecorationLine: "line-through",
     },
     // Full card width, so a "colour · size · pairs" line has room to sit on one line.
     pack: {
       paddingHorizontal: spacing.md,
       paddingBottom: spacing.md,
       gap: 2,
+    },
+    packLabel: {
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+      marginBottom: spacing.xs,
     },
     warnings: {
       paddingHorizontal: spacing.md,
@@ -158,6 +186,8 @@ const getStyles = (colors) =>
     },
     quantity: {
       flex: 1,
+      // micro is 700 by default; this is supporting metadata, not a label.
+      fontWeight: "400",
     },
   });
 

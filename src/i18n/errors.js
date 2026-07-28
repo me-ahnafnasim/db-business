@@ -15,6 +15,9 @@ const ERROR_KEYS = {
   PACK_OPTION_LIMIT: "errors.packOptionLimit",
   PACK_VARIANT_INVALID: "errors.packRuleChanged",
   VALIDATION_ERROR: "errors.validation",
+  // Thrown client-side by api.js when the body will not parse. It was the only code the app
+  // itself raises that had no mapping, so it surfaced as raw English.
+  INVALID_RESPONSE: "errors.invalidResponse",
 };
 
 export function getLocalizedError(error, t, fallbackKey) {

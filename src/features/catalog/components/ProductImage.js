@@ -4,12 +4,25 @@ import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
 
 import { useTheme } from "../../../theme/ThemeProvider";
 
+// `resizeMode` was hardcoded to "contain", which letterboxed every product photo.
+//
+// Uploads keep whatever aspect the merchant supplied — Cloudinary's `crop: 'limit'` only
+// downscales to fit 1200x1200 — and the fallback placeholder is 600x420. So a landscape shoe
+// photo in this square frame showed `surfaceSoft` bars above and below: a grey band inside a
+// white card, on an almost-white page.
+//
+// The default is now "cover". The rule is: CROP where the image identifies the product (grid
+// cards, cart rows, thumbnails), FIT where the image informs (the product-details frame and
+// the fullscreen viewer, which exist so the buyer can inspect the whole shoe). Those two
+// callers pass "contain" explicitly — note the fullscreen viewer renders through this same
+// component, so without the override it would silently crop.
 function ProductImage({
   uri,
   accessibilityLabel,
   style,
   borderRadius = 16,
   aspectRatio = 1,
+  resizeMode = "cover",
 }) {
   const { colors } = useTheme();
   const [loading, setLoading] = useState(Boolean(uri));
@@ -26,7 +39,7 @@ function ProductImage({
         <Image
           source={{ uri }}
           style={styles.image}
-          resizeMode="contain"
+          resizeMode={resizeMode}
           accessible
           accessibilityLabel={accessibilityLabel}
           onLoadStart={() => setLoading(true)}
