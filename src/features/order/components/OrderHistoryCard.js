@@ -14,7 +14,7 @@ import AllocationLine from "./AllocationLine";
 // rendered every order through a ScrollView + three nested .map() calls, so an account
 // with fifty orders mounted a four-figure number of text nodes at once.
 
-function OrderHistoryCard({ order, busy, onCancel }) {
+function OrderHistoryCard({ order, busy, onCancel, onContactSupport }) {
   const { language } = useLanguage();
   const { t } = useTranslation();
   const styles = useStyles(getStyles);
@@ -51,16 +51,30 @@ function OrderHistoryCard({ order, busy, onCancel }) {
       <AppText variant="h3" style={styles.total}>
         {formatBdt(paisaToBdt(order.grandTotalPaisa), language)}
       </AppText>
-      {workflowStatus === "PENDING" ? (
-        <Button
-          title={busy ? t("orders.cancelling") : t("orders.cancel")}
-          onPress={() => onCancel?.(order.id)}
-          variant="dangerOutline"
-          size="sm"
-          loading={busy}
-          style={styles.cancelButton}
-        />
-      ) : null}
+      <View style={styles.actions}>
+        {workflowStatus === "PENDING" ? (
+          <Button
+            title={busy ? t("orders.cancelling") : t("orders.cancel")}
+            onPress={() => onCancel?.(order.id)}
+            variant="dangerOutline"
+            size="sm"
+            fullWidth={false}
+            loading={busy}
+          />
+        ) : null}
+        {/* Opens WhatsApp with the order number already in the message. There is no
+            complaint feature — WhatsApp is the whole channel — and the generic message
+            carried no context, so staff had to ask which order every time. */}
+        {onContactSupport ? (
+          <Button
+            title={t("orders.reportProblem")}
+            onPress={() => onContactSupport({ orderNumber: order.orderNumber })}
+            variant="secondary"
+            size="sm"
+            fullWidth={false}
+          />
+        ) : null}
+      </View>
     </Card>
   );
 }
@@ -100,7 +114,12 @@ const getStyles = (colors) =>
     total: {
       marginTop: spacing.sm + 2,
     },
-    cancelButton: {
+    // Wraps rather than squeezing: the Bangla labels are long, and at 320dp both buttons on
+    // one row would clip.
+    actions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
       marginTop: spacing.lg - 2,
     },
   });

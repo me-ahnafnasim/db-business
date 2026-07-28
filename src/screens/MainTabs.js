@@ -24,7 +24,7 @@ import {
   replaceCartItem,
 } from "../features/cart/services/cartService";
 import { getCheckoutTotals } from "../features/checkout/utils/checkoutPricing";
-import { createOrder, deleteAccount, getProfile, getStorefront } from "../services/api";
+import { createOrder, getProfile, getStorefront } from "../services/api";
 import { paisaToBdt } from "../utils/money";
 import CartScreen from "./CartScreen";
 import CategoriesScreen from "./CategoriesScreen";
@@ -337,25 +337,21 @@ export default function MainTabs({ auth, onSignOut }) {
     () => pushScreen(STACK_ROUTES.HELP_CENTER),
     [pushScreen]
   );
-  // ProfileScreen owns the cross-platform confirmation and feedback dialog. This handler
-  // only performs the request and returns a display-ready result; the success dialog signs
-  // out after the customer acknowledges what was deleted.
-  const handleDeleteAccount = useCallback(async () => {
-    try {
-      await deleteAccount();
-      return { success: true };
-    } catch (error) {
-      return {
-        success: false,
-        error: getLocalizedError(error, tRef.current, "errors.profileRefresh"),
-      };
-    }
-  }, []);
-  const handleContactSupport = useCallback(() => {
+  // WhatsApp is the entire support channel — there is no complaint feature — and the message
+  // used to be a constant carrying no context at all. Passing the product code or order
+  // number means the customer never has to read, remember or retype an identifier.
+  const handleContactSupport = useCallback((context = null) => {
+    const message = context?.productCode
+      ? tRef.current("support.productMessage", {
+          code: context.productCode,
+          name: context.productName || "",
+        })
+      : context?.orderNumber
+        ? tRef.current("support.orderMessage", { order: context.orderNumber })
+        : tRef.current("profile.supportMessage");
+
     Linking.openURL(
-      `https://wa.me/393202935579?text=${encodeURIComponent(
-        tRef.current("profile.supportMessage")
-      )}`
+      `https://wa.me/393202935579?text=${encodeURIComponent(message)}`
     ).catch(() => {
       Alert.alert(
         tRef.current("profile.linkErrorTitle"),
@@ -475,10 +471,6 @@ export default function MainTabs({ auth, onSignOut }) {
     setTabHistory([TAB_KEYS.HOME]);
     onSignOut?.();
   };
-  // Mirrored into a ref for the same reason handleContinueShopping is: handleDeleteAccount
-  // is a useCallback with empty deps declared above this, so it must not capture a single
-  // render's copy of a handler that closes over a prop.
-
   const handleContinueToPayment = () => {
     pushScreen(STACK_ROUTES.PAYMENT);
   };
@@ -599,6 +591,7 @@ export default function MainTabs({ auth, onSignOut }) {
             editingLine={currentRoute.params.editingLine}
             onBack={popScreen}
             onAddConfiguredProduct={handleAddConfiguredProduct}
+            onContactSupport={handleContactSupport}
           />
         );
       case STACK_ROUTES.SHIPPING:
@@ -646,7 +639,7 @@ export default function MainTabs({ auth, onSignOut }) {
           />
         );
       case STACK_ROUTES.ORDERS:
-        return <OrdersScreen onBack={popScreen} />;
+        return <OrdersScreen onBack={popScreen} onContactSupport={handleContactSupport} />;
       case STACK_ROUTES.EXPENSE_TRACKER:
         return <ExpenseTrackerScreen onBack={popScreen} />;
       case STACK_ROUTES.HELP_CENTER:
@@ -697,7 +690,6 @@ export default function MainTabs({ auth, onSignOut }) {
             onOrdersPress={handleOrdersPress}
             onExpenseTrackerPress={handleExpenseTrackerPress}
             onHelpCenterPress={handleHelpCenterPress}
-            onDeleteAccount={handleDeleteAccount}
           />
         </View>
         );

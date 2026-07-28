@@ -52,6 +52,9 @@ export function mapApiProduct(product, festivalCampaign = null) {
     pairsPerDozen: Number(product.pairsPerDozen || 12),
     unitLabel: "dozen",
     categoryName: "All Products",
+    // Server-generated (NSP-000042) and shown to the buyer, so they have something short and
+    // exact to quote to support. The API always sent it; this mapper used to drop it.
+    productCode: product.productCode || "",
     isActive: product.isActive,
     // Set by an admin in the dashboard. `featuredRank` used to live here, derived from the
     // array index, which meant "Featured Picks" was really just the two newest products.

@@ -26,17 +26,12 @@ export default function ProfileScreen({
   onOrdersPress,
   onExpenseTrackerPress,
   onHelpCenterPress,
-  onDeleteAccount,
 }) {
   const { isDarkMode, toggleTheme } = useTheme();
   const { toggleLanguage } = useLanguage();
   const { t } = useTranslation();
   const styles = useStyles(getStyles);
-  const [deleteDialog, setDeleteDialog] = useState({
-    visible: false,
-    phase: "confirm",
-    error: "",
-  });
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
 
   const openExternalUrl = async (url) => {
     try {
@@ -73,48 +68,25 @@ export default function ProfileScreen({
     }
 
     if (key === "delete-account") {
-      setDeleteDialog({ visible: true, phase: "confirm", error: "" });
+      setDeleteDialogVisible(true);
     }
   };
 
   const closeDeleteDialog = () => {
-    if (deleteDialog.phase === "deleting") return;
-    setDeleteDialog({ visible: false, phase: "confirm", error: "" });
+    setDeleteDialogVisible(false);
   };
 
-  const confirmDeleteAccount = async () => {
-    setDeleteDialog({ visible: true, phase: "deleting", error: "" });
-    const result = await onDeleteAccount?.();
-
-    if (result?.success) {
-      setDeleteDialog({ visible: true, phase: "success", error: "" });
-      return;
-    }
-
-    setDeleteDialog({
-      visible: true,
-      phase: "error",
-      error: result?.error || t("profile.deleteAccountUnavailable"),
-    });
+  const contactAdminForDeletion = () => {
+    setDeleteDialogVisible(false);
+    openExternalUrl(
+      `https://wa.me/393202935579?text=${encodeURIComponent(
+        t("profile.deleteAccountWhatsAppMessage")
+      )}`
+    );
   };
 
-  const finishDeletedAccount = () => {
-    setDeleteDialog({ visible: false, phase: "confirm", error: "" });
-    onSignOut?.();
-  };
-
-  const deleteDialogTitle =
-    deleteDialog.phase === "success"
-      ? t("profile.deleteAccountDoneTitle")
-      : deleteDialog.phase === "error"
-        ? t("profile.deleteAccountErrorTitle")
-        : t("profile.deleteAccountTitle");
-  const deleteDialogMessage =
-    deleteDialog.phase === "success"
-      ? t("profile.deleteAccountDoneMessage")
-      : deleteDialog.phase === "error"
-        ? deleteDialog.error
-        : t("profile.deleteAccountMessage");
+  const deleteDialogTitle = t("profile.deleteAccountTitle");
+  const deleteDialogMessage = t("profile.deleteAccountMessage");
 
   return (
     <>
@@ -151,13 +123,8 @@ export default function ProfileScreen({
       </ScreenShell>
 
       <Dialog
-        visible={deleteDialog.visible}
-        onDismiss={
-          deleteDialog.phase === "success"
-            ? finishDeletedAccount
-            : closeDeleteDialog
-        }
-        dismissOnBackdropPress={deleteDialog.phase !== "deleting"}
+        visible={deleteDialogVisible}
+        onDismiss={closeDeleteDialog}
         accessibilityLabel={`${deleteDialogTitle} ${deleteDialogMessage}`}
       >
         <AppText variant="h2" style={styles.dialogTitle}>
@@ -167,40 +134,20 @@ export default function ProfileScreen({
           {deleteDialogMessage}
         </AppText>
 
-        {deleteDialog.phase === "success" ? (
+        <View style={styles.dialogActions}>
           <Button
-            title={t("common.close")}
-            onPress={finishDeletedAccount}
-            size="lg"
-          />
-        ) : deleteDialog.phase === "error" ? (
-          <Button
-            title={t("common.close")}
+            title={t("common.cancel")}
             onPress={closeDeleteDialog}
+            variant="secondary"
             size="lg"
           />
-        ) : (
-          <View style={styles.dialogActions}>
-            <Button
-              title={t("common.cancel")}
-              onPress={closeDeleteDialog}
-              variant="secondary"
-              disabled={deleteDialog.phase === "deleting"}
-              size="lg"
-            />
-            <Button
-              title={
-                deleteDialog.phase === "deleting"
-                  ? t("profile.deletingAccount")
-                  : t("profile.continueDeletion")
-              }
-              onPress={confirmDeleteAccount}
-              variant="danger"
-              loading={deleteDialog.phase === "deleting"}
-              size="lg"
-            />
-          </View>
-        )}
+          <Button
+            title={t("profile.deleteAccountContactAdmin")}
+            onPress={contactAdminForDeletion}
+            variant="danger"
+            size="lg"
+          />
+        </View>
       </Dialog>
     </>
   );

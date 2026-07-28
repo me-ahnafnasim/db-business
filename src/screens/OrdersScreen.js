@@ -9,7 +9,7 @@ import { getLocalizedError } from "../i18n/errors";
 import { spacing, useStyles, useTheme } from "../theme";
 import { AppText, AsyncStateView, Button } from "../ui";
 
-export default function OrdersScreen({ onBack }) {
+export default function OrdersScreen({ onBack, onContactSupport }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const styles = useStyles(getStyles);
@@ -54,7 +54,7 @@ export default function OrdersScreen({ onBack }) {
 
   const renderOrder = useCallback(
     ({ item }) => (
-      <OrderHistoryCard order={item} busy={busyId === item.id} onCancel={handleCancel} />
+      <OrderHistoryCard order={item} busy={busyId === item.id} onCancel={handleCancel} onContactSupport={onContactSupport} />
     ),
     [busyId, handleCancel]
   );

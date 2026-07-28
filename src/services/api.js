@@ -168,12 +168,6 @@ export async function updateProfile(profileData) {
   return request('PATCH', '/client/profile', normalizeProfileIds(profileData));
 }
 
-// Removes personal details and deactivates the account. Order records are retained, which is
-// what public/account-deletion/index.html tells the customer.
-export async function deleteAccount() {
-  return request('DELETE', '/client/profile');
-}
-
 function normalizeProfileIds(profileData) {
   const normalized = { ...profileData };
   for (const key of ['divisionId', 'districtId', 'thanaId', 'unionId']) {

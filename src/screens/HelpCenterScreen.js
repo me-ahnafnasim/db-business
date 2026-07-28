@@ -72,7 +72,9 @@ export default function HelpCenterScreen({ onBack, onContactSupport }) {
         </AppText>
         <Button
           title={t("help.contactSupport")}
-          onPress={onContactSupport}
+          // Wrapped: onPress hands the press event as the first argument, and
+          // handleContactSupport reads its first argument as a context object.
+          onPress={() => onContactSupport?.()}
           size="lg"
           leftIcon={<Feather name="message-circle" size={16} color={colors.onBrand} />}
         />

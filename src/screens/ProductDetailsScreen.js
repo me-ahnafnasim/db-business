@@ -11,6 +11,7 @@ export default function ProductDetailsScreen({
   onAddConfiguredProduct,
   initialConfig,
   editingLine,
+  onContactSupport,
 }) {
   const { t } = useTranslation();
   if (!product) {
@@ -23,7 +24,12 @@ export default function ProductDetailsScreen({
       subtitle={t("catalog.detailsSubtitle")}
       onBack={onBack}
     >
-      <ProductSummaryCard product={product} />
+      <ProductSummaryCard
+        product={product}
+        onContactSupport={() =>
+          onContactSupport?.({ productCode: product.productCode, productName: product.name })
+        }
+      />
       <ProductConfiguratorForm
         product={product}
         initialConfig={initialConfig}

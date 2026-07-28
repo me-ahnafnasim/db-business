@@ -65,6 +65,8 @@
   },
   "catalog": {
     "viewProduct": "View Product",
+    "productCode": "Code {{code}}",
+    "askAboutProduct": "Ask about this product",
     "from": "From",
     "perDozen": "/ dozen",
     "moq": "MOQ {{count}} dozen",
@@ -207,6 +209,7 @@
     "loadError": "Could not load orders.",
     "cancelError": "Could not cancel this order.",
     "cancel": "Cancel order",
+    "reportProblem": "Report a problem",
     "cancelling": "Cancelling…",
     "lines": "{{count}} item lines"
   },
@@ -237,6 +240,10 @@
   },
   "network": {
     "offline": "No internet connection. Your cart is saved."
+  },
+  "support": {
+    "productMessage": "Hello NoboSole Support. I need help with this product.\nCode: {{code}}\nProduct: {{name}}",
+    "orderMessage": "Hello NoboSole Support. I need help with this order.\nOrder: {{order}}"
   },
   "help": {
     "title": "Help Center",
@@ -314,14 +321,10 @@
     "terms": "Terms & Conditions",
     "returnsPolicy": "Delivery, Returns & Refunds",
     "deleteAccount": "Delete Account",
-    "deleteAccountTitle": "Delete your account?",
-    "deleteAccountMessage": "This permanently removes your personal profile and cart, then closes your NoboSole account. Order, payment, and non-identifying delivery-region records may be retained where required. This cannot be undone.",
-    "continueDeletion": "Delete my account",
-    "deleteAccountDoneTitle": "Account deleted",
-    "deleteAccountDoneMessage": "Your personal profile has been anonymized, your cart has been removed, and your NoboSole account is closed. Required order and payment records have been retained. You will now be signed out.",
-    "deletingAccount": "Deleting account…",
-    "deleteAccountErrorTitle": "Account could not be deleted",
-    "deleteAccountUnavailable": "Account deletion is unavailable right now. Please try again.",
+    "deleteAccountTitle": "Request account deletion",
+    "deleteAccountMessage": "Contact the NoboSole admin on WhatsApp to request account deletion. The admin will verify your identity, explain which records must be retained, and confirm when the deletion is complete.",
+    "deleteAccountContactAdmin": "Message admin on WhatsApp",
+    "deleteAccountWhatsAppMessage": "Hello NoboSole Admin, I want to delete my NoboSole account and associated personal data. Please tell me how to verify my identity and complete the request.",
     "supportMessage": "Hello NoboSole Support, I need help with the app.",
     "linkErrorTitle": "Could not open link",
     "linkErrorMessage": "Please try again or contact NoboSole Support on WhatsApp."
