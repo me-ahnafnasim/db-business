@@ -1,5 +1,5 @@
 import Feather from "@expo/vector-icons/Feather";
-import { FlatList, StyleSheet, Text, TextInput, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, TextInput, View } from "react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -8,7 +8,17 @@ import CatalogProductCard from "../features/catalog/components/CatalogProductCar
 import { getFilteredProducts } from "../features/catalog/utils/catalogSelectors";
 import { TAB_KEYS } from "../data/tabs";
 import { useResponsiveGrid } from "../hooks/useResponsiveGrid";
-import { useTheme } from "../theme/ThemeProvider";
+import { radius, spacing, useStyles, useTheme } from "../theme";
+import { AppText, EmptyState, IconButton } from "../ui";
+
+function useDebounce(value, delay) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
 
 export default function SearchScreen({
   activeTab,
@@ -24,13 +34,18 @@ export default function SearchScreen({
   const { colors } = useTheme();
   const { t } = useTranslation();
   const grid = useResponsiveGrid();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 300);
   const inputRef = useRef(null);
-  const results = useMemo(() => getFilteredProducts(catalog.categories, query), [catalog.categories, query]);
+  const results = useMemo(() => getFilteredProducts(catalog.categories, debouncedQuery), [catalog.categories, debouncedQuery]);
   const renderProduct = useCallback(
     ({ item }) => <CatalogProductCard product={item} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />,
     [grid.cardWidth, onOpenProduct]
+  );
+  const columnWrapper = useMemo(
+    () => (grid.columns > 1 ? [styles.row, { gap: grid.gap }] : undefined),
+    [grid.columns, grid.gap, styles.row]
   );
 
   useEffect(() => {
@@ -59,27 +74,48 @@ export default function SearchScreen({
       scrollable={false}
     >
       <View style={styles.content}>
-        <View style={styles.searchBox}>
-          <Feather name="search" size={22} color={colors.textSecondary} />
-          <TextInput
-            ref={inputRef}
-            placeholder={t("search.placeholder")}
-            placeholderTextColor={colors.textSecondary}
-            style={styles.input}
-            value={query}
-            onChangeText={setQuery}
-          />
-        </View>
-        <Text style={styles.resultText}>{t("search.results", { count: results.length })}</Text>
+        <Pressable
+          style={styles.searchBar}
+          onPress={() => inputRef.current?.focus()}
+          accessibilityRole="search"
+          accessibilityLabel={t("search.placeholder")}
+        >
+          <Feather name="search" size={18} color={colors.brand} />
+          <AppText variant="body" tone={query ? "primary" : "secondary"} style={styles.inputText} numberOfLines={1}>
+            {query || t("search.placeholder")}
+          </AppText>
+          {query.length > 0 ? (
+            <IconButton
+              label={t("common.clear")}
+              size="sm"
+              tone="plain"
+              onPress={() => {
+                setQuery("");
+                inputRef.current?.focus();
+              }}
+            >
+              <Feather name="x" size={16} color={colors.textSecondary} />
+            </IconButton>
+          ) : null}
+        </Pressable>
+        <TextInput
+          ref={inputRef}
+          style={styles.hiddenInput}
+          value={query}
+          onChangeText={setQuery}
+        />
+        <AppText variant="bodySm" tone="secondary" style={styles.resultText}>
+          {t("search.results", { count: results.length })}
+        </AppText>
         <FlatList
           data={results}
           keyExtractor={(item, index) => item?.id ?? String(index)}
           key={`search-${grid.columns}`}
           numColumns={grid.columns}
-          columnWrapperStyle={grid.columns > 1 ? [styles.row, { gap: grid.gap }] : undefined}
+          columnWrapperStyle={columnWrapper}
           contentContainerStyle={styles.list}
           renderItem={renderProduct}
-          ListEmptyComponent={<Text style={styles.emptyText}>{t("search.empty")}</Text>}
+          ListEmptyComponent={<EmptyState title={t("search.empty")} />}
           initialNumToRender={8}
           maxToRenderPerBatch={8}
           windowSize={5}
@@ -95,39 +131,40 @@ const getStyles = (colors) =>
     content: {
       flex: 1,
     },
-    searchBox: {
-      backgroundColor: colors.surface,
-      borderRadius: 22,
-      marginHorizontal: 20,
-      marginBottom: 14,
-      paddingHorizontal: 18,
-      paddingVertical: 16,
+    searchBar: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 12,
+      backgroundColor: colors.surface,
+      marginHorizontal: spacing.gutter,
+      marginBottom: spacing.lg - 2,
+      paddingHorizontal: spacing.lg + 2,
+      paddingVertical: spacing.lg - 2,
+      borderRadius: radius.xl,
+      gap: spacing.sm + 2,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
-    input: {
+    inputText: {
       flex: 1,
-      color: colors.textPrimary,
-      fontSize: 17,
+    },
+    // The real input is kept offscreen and driven by the pressable above it. Replacing
+    // this with a plain TextInput is tracked in UI_IMPROVEMENT_REPORT.md — it changes
+    // focus and state wiring, so it is out of scope for a UI-only pass.
+    hiddenInput: {
+      position: "absolute",
+      width: 1,
+      height: 1,
+      opacity: 0,
     },
     resultText: {
-      color: colors.textSecondary,
-      fontSize: 15,
-      marginHorizontal: 20,
-      marginBottom: 10,
+      marginHorizontal: spacing.gutter,
+      marginBottom: spacing.sm + 2,
     },
     list: {
-      paddingHorizontal: 20,
-      paddingBottom: 24,
+      paddingHorizontal: spacing.gutter,
+      paddingBottom: spacing.xxl,
     },
     row: {
       alignItems: "stretch",
-    },
-    emptyText: {
-      color: colors.textSecondary,
-      textAlign: "center",
-      marginTop: 40,
-      fontSize: 16,
     },
   });

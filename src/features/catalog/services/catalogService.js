@@ -1,4 +1,4 @@
-import { getProducts } from "../../../services/api";
+import { getPopularProducts, getProducts } from "../../../services/api";
 import { paisaToBdt } from "../../../utils/money";
 
 const FALLBACK_IMAGE = "https://placehold.co/600x420/png?text=NoboSole";
@@ -62,8 +62,18 @@ export function mapApiProduct(product, index = 0, festivalCampaign = null) {
 }
 
 export async function fetchCatalog(festivalCampaign = null) {
-  const response = await getProducts({ page: 1, limit: 100, isActive: true });
+  const [response, popularRes] = await Promise.all([
+    getProducts({ page: 1, limit: 100, isActive: true }),
+    getPopularProducts(6).catch(() => null),
+  ]);
   const products = (response.data || []).filter(Boolean).map((product, index) => mapApiProduct(product, index, festivalCampaign)).filter((product) => product.variants.length);
+
+  const popularData = popularRes?.data?.data || [];
+  const popularProducts = popularData.length
+    ? popularData
+        .map((p) => mapApiProduct(p, 0, festivalCampaign))
+        .filter((p) => p.variants.length)
+    : [];
 
   return {
     categories: [
@@ -77,5 +87,6 @@ export async function fetchCatalog(festivalCampaign = null) {
       },
     ],
     pagination: response.pagination,
+    popularProducts,
   };
 }

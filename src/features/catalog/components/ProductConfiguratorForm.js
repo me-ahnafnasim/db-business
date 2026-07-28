@@ -1,16 +1,16 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../../i18n/LanguageProvider";
-import { useTheme } from "../../../theme/ThemeProvider";
+import { radius, spacing, useStyles } from "../../../theme";
+import { AppText, Button, Chip, Input } from "../../../ui";
 import ProductConfigPriceSummary from "./ProductConfigPriceSummary";
 import ProductConfigQuantityControl from "./ProductConfigQuantityControl";
 
 export default function ProductConfiguratorForm({ product, onAddToCart }) {
-  const { colors, isDarkMode } = useTheme();
   const { language } = useLanguage();
   const { t } = useTranslation();
-  const styles = getStyles(colors, isDarkMode);
+  const styles = useStyles(getStyles);
   const firstColor = product.availableColors[0]?.value;
   const [quantityInput, setQuantityInput] = useState("1");
   const quantity = Math.max(1, Number(quantityInput || 1));
@@ -78,11 +78,11 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
   const error = !quantity || quantity < 1
     ? t("catalog.enterQuantity")
     : selectedColors.length < quantity
-      ? "Select " + quantity + " color(s)"
+      ? t("product_configurator.select_colors", { count: quantity })
       : !selectedSizes.length
         ? t("catalog.selectSize")
         : !allSizesHaveMinPairs
-          ? "Each size needs at least 2 pairs"
+          ? t("product_configurator.min_pairs_per_size")
           : totalPairs !== 12 * quantity
             ? t("catalog.packPairTotal", { count: totalPairs, required: 12 * quantity })
             : "";
@@ -115,63 +115,87 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
   return (
     <View>
       <ProductConfigQuantityControl quantity={quantity} moq={product.moq} onChange={setQuantityInput} />
-      <Text style={styles.moqNote}>{t("catalog.moqAcrossPacks", { count: product.moq })}</Text>
+      <AppText variant="caption" tone="secondary" style={styles.moqNote}>
+        {t("catalog.moqAcrossPacks", { count: product.moq })}
+      </AppText>
 
       <View style={styles.ruleHeader}>
-        <Text style={styles.sectionTitle}>{t("catalog.colors")}</Text>
-        <Text style={[styles.counter, selectedColors.length >= quantity && styles.counterReady]}>
+        <AppText variant="bodyStrong" style={styles.sectionTitle}>
+          {t("catalog.colors")}
+        </AppText>
+        <AppText
+          variant="label"
+          tone={selectedColors.length >= quantity ? "success" : "error"}
+          style={styles.counter}
+        >
           {t("catalog.selectionProgress", { selected: selectedColors.length, required: quantity })}
-        </Text>
+        </AppText>
       </View>
       <View style={styles.optionWrap}>
-        {product.availableColors.map((option) => {
-          const active = selectedColors.includes(option.value);
-          return (
-              <Pressable key={option.value} style={[styles.option, active && styles.optionActive]}
-                onPress={() => toggleColor(option.value)}>
-                <Text style={[styles.optionText, active && styles.optionTextActive]}>{language === 'bn' && option.colorNameBn ? option.colorNameBn : option.label}</Text>
-            </Pressable>
-          );
-        })}
+        {product.availableColors.map((option) => (
+          <Chip
+            key={option.value}
+            label={language === "bn" && option.colorNameBn ? option.colorNameBn : option.label}
+            selected={selectedColors.includes(option.value)}
+            onPress={() => toggleColor(option.value)}
+            size="sm"
+          />
+        ))}
       </View>
 
       <View style={styles.ruleHeader}>
-        <Text style={styles.sectionTitle}>{t("catalog.sizes")}</Text>
-        <Text style={[styles.counter, selectedSizes.length > 0 && styles.counterReady]}>
+        <AppText variant="bodyStrong" style={styles.sectionTitle}>
+          {t("catalog.sizes")}
+        </AppText>
+        <AppText
+          variant="label"
+          tone={selectedSizes.length > 0 ? "success" : "error"}
+          style={styles.counter}
+        >
           {t("catalog.selectionProgress", { selected: selectedSizes.length, required: availableSizes.length })}
-        </Text>
+        </AppText>
       </View>
       <View style={styles.optionWrap}>
-        {availableSizes.map((option) => {
-          const active = selectedSizes.includes(option.value);
-          return (
-            <Pressable key={option.value} style={[styles.option, active && styles.optionActive]}
-              onPress={() => toggleSize(option.value)}>
-              <Text style={[styles.optionText, active && styles.optionTextActive]}>{option.label}</Text>
-            </Pressable>
-          );
-        })}
+        {availableSizes.map((option) => (
+          <Chip
+            key={option.value}
+            label={option.label}
+            selected={selectedSizes.includes(option.value)}
+            onPress={() => toggleSize(option.value)}
+            size="sm"
+          />
+        ))}
       </View>
 
       {selectedSizes.length > 0 && (
         <View style={styles.builder}>
           <View style={styles.builderHeader}>
-            <Text style={styles.sectionTitle}>Pairs per dozen</Text>
-            <Text style={[styles.counter, totalPairs === 12 * quantity && styles.counterReady]}>
+            <AppText variant="bodyStrong" style={styles.sectionTitle}>
+              {t("product_configurator.pairs_per_dozen")}
+            </AppText>
+            <AppText
+              variant="label"
+              tone={totalPairs === 12 * quantity ? "success" : "error"}
+              style={styles.counter}
+            >
               {totalPairs}/{12 * quantity}
-            </Text>
+            </AppText>
           </View>
-          <Text style={styles.hint}>Minimum 2 pairs per size</Text>
+          <AppText variant="micro" tone="secondary" style={styles.hint}>
+            {t("product_configurator.min_2_pairs")}
+          </AppText>
           <View style={styles.matrix}>
             {selectedSizes.map((size) => (
               <View key={size} style={styles.cell}>
-                <Text style={styles.cellLabel}>Size {size}</Text>
-                <TextInput
+                <AppText variant="micro" tone="secondary" style={styles.cellLabel}>
+                  {t("catalog.size")} {size}
+                </AppText>
+                <Input
                   value={pairCounts[size] || ""}
                   onChangeText={(v) => updatePairs(size, v)}
                   keyboardType="number-pad"
                   placeholder="0"
-                  placeholderTextColor={colors.textSecondary}
+                  accessibilityLabel={`${t("catalog.size")} ${size}`}
                   style={styles.cellInput}
                 />
               </View>
@@ -180,37 +204,89 @@ export default function ProductConfiguratorForm({ product, onAddToCart }) {
         </View>
       )}
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <AppText variant="label" tone="error" style={styles.errorText}>
+          {error}
+        </AppText>
+      ) : null}
       <ProductConfigPriceSummary basePrice={price} originalBasePrice={product.originalPrice}
         sizeSurcharge={0} logoSurcharge={0} quantity={quantity} totalPrice={totalPrice} />
-      <Pressable style={[styles.button, !canSubmit && styles.buttonDisabled]} disabled={!canSubmit}
-        onPress={handleAdd}>
-        <Text style={styles.buttonText}>Add {quantity} dozen to cart</Text>
-      </Pressable>
+      <Button
+        title={t("product_configurator.add_dozen_to_cart", { count: quantity })}
+        onPress={handleAdd}
+        disabled={!canSubmit}
+        size="lg"
+      />
     </View>
   );
 }
 
-const getStyles = (colors, isDarkMode) => StyleSheet.create({
-  ruleHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  sectionTitle: { color: colors.textPrimary, fontSize: 16, fontWeight: "800", marginBottom: 10 },
-  optionWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 },
-  option: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceSoft, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14 },
-  optionActive: { borderColor: colors.tabActive, backgroundColor: isDarkMode ? "#453d20" : "#fff5cc" },
-  optionText: { color: colors.textSecondary, fontWeight: "700" },
-  optionTextActive: { color: colors.textPrimary },
-  builder: { borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 14, marginBottom: 18, backgroundColor: colors.surface },
-  builderHeader: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
-  counter: { color: colors.accent, fontWeight: "800" },
-  counterReady: { color: colors.success },
-  hint: { color: colors.textSecondary, fontSize: 11, marginTop: -6, marginBottom: 12 },
-  matrix: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  cell: { width: 104, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 9 },
-  cellLabel: { color: colors.textSecondary, fontSize: 11, marginBottom: 5 },
-  cellInput: { height: 38, borderRadius: 9, backgroundColor: colors.surfaceSoft, color: colors.textPrimary, textAlign: "center", fontWeight: "800" },
-  moqNote: { color: colors.textSecondary, fontSize: 12, marginTop: -8, marginBottom: 12 },
-  errorText: { color: colors.accent, fontSize: 13, fontWeight: "600", marginBottom: 14 },
-  button: { height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: isDarkMode ? "#d4af37" : "#e5bd42" },
-  buttonDisabled: { opacity: 0.45 },
-  buttonText: { color: "#0a0e27", fontSize: 16, fontWeight: "900" },
+const getStyles = (colors) => StyleSheet.create({
+  ruleHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  sectionTitle: {
+    marginBottom: spacing.sm + 2,
+  },
+  counter: {
+    fontWeight: "800",
+    marginBottom: spacing.sm + 2,
+  },
+  optionWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  builder: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.lg - 2,
+    marginBottom: spacing.lg + 2,
+    backgroundColor: colors.surface,
+  },
+  builderHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  hint: {
+    fontWeight: "400",
+    marginBottom: spacing.md,
+  },
+  matrix: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  cell: {
+    width: 104,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.sm,
+    padding: spacing.sm + 1,
+  },
+  cellLabel: {
+    fontWeight: "400",
+    marginBottom: spacing.xs + 1,
+  },
+  cellInput: {
+    minHeight: 40,
+    borderRadius: radius.xs,
+    borderWidth: 0,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    textAlign: "center",
+    fontWeight: "800",
+  },
+  moqNote: {
+    marginBottom: spacing.md,
+  },
+  errorText: {
+    marginBottom: spacing.lg - 2,
+  },
 });

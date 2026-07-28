@@ -66,7 +66,7 @@ export function LanguageProvider({ children }) {
   );
 
   if (!ready) {
-    return <View style={styles.loading}><ActivityIndicator color="#d4af37" size="large" /></View>;
+    return <View style={styles.loading}><ActivityIndicator color="#c4950a" size="large" /></View>;
   }
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;

@@ -1,19 +1,21 @@
 import Feather from "@expo/vector-icons/Feather";
 import { memo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { useLanguage } from "../../../i18n/LanguageProvider";
 import { getLocalizedProduct } from "../../../i18n/product";
-import { useTheme } from "../../../theme/ThemeProvider";
+import { radius, spacing, useStyles, useTheme } from "../../../theme";
+import { AppText } from "../../../ui";
 import { formatBdt } from "../../../utils/money";
 import ProductImage from "./ProductImage";
+import SaleBadge from "./SaleBadge";
 
 function CatalogProductCard({ product, onOpenProduct, cardWidth = 236 }) {
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const { language } = useLanguage();
   const { t } = useTranslation();
-  const styles = getStyles(colors, isDarkMode);
+  const styles = useStyles(getStyles);
   const displayProduct = getLocalizedProduct(product, language);
 
   return (
@@ -27,19 +29,29 @@ function CatalogProductCard({ product, onOpenProduct, cardWidth = 236 }) {
         <ProductImage
           uri={product.image}
           accessibilityLabel={t("catalog.imageOf", { current: 1, total: product.images?.length || 1, name: displayProduct.name })}
-          borderRadius={16}
+          borderRadius={radius.md}
         />
       </View>
       <View style={styles.body}>
-        <Text numberOfLines={2} style={styles.name}>{displayProduct.name}</Text>
-        {product.discountPercent ? <View style={styles.saleRow}><Text style={styles.saleBadge}>-{product.discountPercent}%</Text><Text style={styles.originalPrice}>{formatBdt(product.originalPrice, language)}</Text></View> : null}
-        <Text style={styles.price}>{t("catalog.from")} {formatBdt(product.price, language)}</Text>
-        <Text numberOfLines={1} style={styles.moq}>{t("catalog.moq", { count: product.moq })}</Text>
-        <View style={styles.button}>
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={styles.buttonText}>
-            {t("catalog.viewProduct")}
-          </Text>
-          <Feather name="arrow-right" size={16} color={isDarkMode ? colors.black : "#0a0e27"} />
+        <AppText numberOfLines={2} variant="bodySm" style={styles.name}>
+          {displayProduct.name}
+        </AppText>
+        {product.discountPercent ? (
+          <View style={styles.saleRow}>
+            <SaleBadge percent={product.discountPercent} />
+            <AppText variant="caption" tone="secondary" style={styles.originalPrice}>
+              {formatBdt(product.originalPrice, language)}
+            </AppText>
+          </View>
+        ) : null}
+        <AppText variant="bodyStrong" style={styles.price}>
+          {t("catalog.from")} {formatBdt(product.price, language)}
+        </AppText>
+        <View style={styles.moqRow}>
+          <AppText numberOfLines={1} variant="micro" tone="secondary" style={styles.moq}>
+            {t("catalog.moq", { count: product.moq })}
+          </AppText>
+          <Feather name="chevron-right" size={14} color={colors.textSecondary} />
         </View>
       </View>
     </Pressable>
@@ -48,62 +60,53 @@ function CatalogProductCard({ product, onOpenProduct, cardWidth = 236 }) {
 
 export default memo(CatalogProductCard);
 
-const getStyles = (colors, isDarkMode) => StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 14,
-  },
-  cardPressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.985 }],
-  },
-  imageFrame: {
-    padding: 8,
-  },
-  body: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
-  name: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "800",
-    minHeight: 40,
-  },
-  price: {
-    color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: "800",
-    marginTop: 8,
-  },
-  saleRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 7 },
-  saleBadge: { color: "#7a220b", backgroundColor: "#f4ca55", borderRadius: 8, paddingHorizontal: 7, paddingVertical: 3, fontSize: 10, fontWeight: "900" },
-  originalPrice: { color: colors.textSecondary, fontSize: 12, textDecorationLine: "line-through" },
-  moq: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    marginTop: 3,
-  },
-  button: {
-    minHeight: 44,
-    borderRadius: 13,
-    backgroundColor: isDarkMode ? "#d4af37" : "#e5bd42",
-    marginTop: 12,
-    paddingHorizontal: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  buttonText: {
-    color: isDarkMode ? colors.black : "#0a0e27",
-    fontSize: 12,
-    fontWeight: "800",
-    flexShrink: 1,
-  },
-});
+const getStyles = (colors, type) =>
+  StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.card,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: spacing.lg - 2,
+    },
+    cardPressed: {
+      opacity: 0.88,
+      transform: [{ scale: 0.985 }],
+    },
+    imageFrame: {
+      padding: spacing.sm,
+    },
+    body: {
+      paddingHorizontal: spacing.md,
+      paddingBottom: spacing.md,
+    },
+    name: {
+      fontWeight: "800",
+      // Two lines of the locale's own leading, so Bangla is given the room it needs
+      // instead of being squeezed into an English-sized box.
+      minHeight: type.bodySm.lineHeight * 2,
+    },
+    price: {
+      marginTop: spacing.sm,
+    },
+    saleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm - 1,
+      marginTop: spacing.sm - 1,
+    },
+    originalPrice: {
+      textDecorationLine: "line-through",
+    },
+    moqRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: spacing.xs - 1,
+    },
+    moq: {
+      fontWeight: "400",
+      flex: 1,
+    },
+  });

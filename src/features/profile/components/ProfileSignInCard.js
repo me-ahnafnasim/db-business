@@ -1,29 +1,25 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
-import { useTheme } from "../../../theme/ThemeProvider";
+import { radius, spacing, useStyles } from "../../../theme";
+import { AppText, Button } from "../../../ui";
 
 export default function ProfileSignInCard({ auth, onSignOut }) {
-  const { colors } = useTheme();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
   const isSignedIn = auth?.isSignedIn;
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>{isSignedIn ? t("profile.signedIn") : t("profile.signInToAccess")}</Text>
-      <Text style={styles.subtitle}>
+      <AppText variant="h2" style={styles.title}>
+        {isSignedIn ? t("profile.signedIn") : t("profile.signInToAccess")}
+      </AppText>
+      <AppText variant="body" tone="secondary" style={styles.subtitle}>
         {isSignedIn ? `${auth.displayName} · ${auth.email}` : t("profile.signInSubtitle")}
-      </Text>
+      </AppText>
       {isSignedIn ? (
-        <Pressable
-          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-          onPress={onSignOut}
-          accessibilityRole="button"
-          accessibilityLabel={t("profile.logout")}
-        >
-          <Text style={styles.buttonText}>{t("profile.logout")}</Text>
-        </Pressable>
+        // Was a white button on a white card — invisible in light mode.
+        <Button title={t("profile.logout")} onPress={onSignOut} variant="secondary" size="lg" />
       ) : null}
     </View>
   );
@@ -33,38 +29,19 @@ const getStyles = (colors) =>
   StyleSheet.create({
     card: {
       backgroundColor: colors.surface,
-      borderRadius: 28,
-      paddingHorizontal: 18,
-      paddingVertical: 24,
-      alignItems: "center",
-      marginBottom: 18,
+      borderRadius: radius.card,
+      paddingHorizontal: spacing.lg + 2,
+      paddingVertical: spacing.xxl,
+      alignSelf: "stretch",
+      alignItems: "stretch",
+      marginBottom: spacing.lg + 2,
     },
     title: {
-      color: colors.textPrimary,
-      fontSize: 24,
-      fontWeight: "700",
-      marginBottom: 10,
+      marginBottom: spacing.sm + 2,
+      textAlign: "center",
     },
     subtitle: {
-      color: colors.textSecondary,
-      fontSize: 16,
       textAlign: "center",
-      marginBottom: 22,
-    },
-    button: {
-      alignSelf: "stretch",
-      backgroundColor: colors.white,
-      borderRadius: 24,
-      minHeight: 56,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    buttonPressed: {
-      opacity: 0.88,
-    },
-    buttonText: {
-      color: colors.black,
-      fontSize: 18,
-      fontWeight: "700",
+      marginBottom: spacing.xxl - 2,
     },
   });

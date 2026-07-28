@@ -1,10 +1,16 @@
 import { StatusBar } from "expo-status-bar";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import BottomNav from "./BottomNav";
 import Header from "./Header";
-import { useTheme } from "../theme/ThemeProvider";
+import { spacing, useStyles, useTheme } from "../theme";
+import { ScreenTitle } from "../ui";
+
+// Layout for the five tab screens: header, optional title block, body, bottom nav.
+//
+// `showHeader` and the optional `title` exist because Home and Profile each used to
+// re-implement this entire component just to opt out of one part of it.
 
 export default function ScreenShell({
   activeTab,
@@ -18,42 +24,44 @@ export default function ScreenShell({
   subtitle,
   headerActionLabel,
   onHeaderAction,
+  showHeader = true,
+  padded = false,
+  contentContainerStyle,
   children,
   scrollable = true,
 }) {
   const { colors, isDarkMode } = useTheme();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
   const ContentWrapper = scrollable ? ScrollView : View;
   const contentProps = scrollable
     ? {
         showsVerticalScrollIndicator: false,
-        contentContainerStyle: styles.scrollContent,
+        contentContainerStyle: [styles.scrollContent, padded && styles.padded, contentContainerStyle],
       }
-    : { style: styles.fixedContent };
+    : { style: [styles.fixedContent, padded && styles.padded] };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={colors.surface} />
       <View style={styles.container}>
-        <Header
-          onProfilePress={onProfilePress}
-          onSearchPress={onSearchPress}
-          onCartPress={onCartPress}
-          cartCount={cartCount}
-          auth={auth}
-        />
+        {showHeader ? (
+          <Header
+            onProfilePress={onProfilePress}
+            onSearchPress={onSearchPress}
+            onCartPress={onCartPress}
+            cartCount={cartCount}
+            auth={auth}
+          />
+        ) : null}
         <ContentWrapper {...contentProps}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.title}>{title}</Text>
-              {headerActionLabel ? (
-                <Text style={styles.headerAction} onPress={onHeaderAction}>
-                  {headerActionLabel}
-                </Text>
-              ) : null}
-            </View>
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-          </View>
+          {title ? (
+            <ScreenTitle
+              title={title}
+              subtitle={subtitle}
+              actionLabel={headerActionLabel}
+              onAction={onHeaderAction}
+            />
+          ) : null}
           {children}
         </ContentWrapper>
         <BottomNav activeTab={activeTab} onTabPress={onTabPress} cartCount={cartCount} />
@@ -64,45 +72,22 @@ export default function ScreenShell({
 
 const getStyles = (colors) =>
   StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    paddingBottom: 18,
-  },
-  fixedContent: {
-    flex: 1,
-  },
-  sectionHeader: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 14,
-  },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: 30,
-    fontWeight: "800",
-    flex: 1,
-  },
-  headerAction: {
-    color: colors.textSecondary,
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: 18,
-    marginTop: 6,
-  },
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.surface,
+    },
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContent: {
+      paddingBottom: spacing.xl,
+    },
+    fixedContent: {
+      flex: 1,
+    },
+    padded: {
+      paddingHorizontal: spacing.gutter,
+      paddingTop: spacing.lg,
+    },
   });

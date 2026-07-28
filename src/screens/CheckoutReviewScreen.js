@@ -1,9 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import StackScreenShell from "../components/StackScreenShell";
 import CheckoutSummaryCard from "../features/checkout/components/CheckoutSummaryCard";
-import { useTheme } from "../theme/ThemeProvider";
+import AllocationLine from "../features/order/components/AllocationLine";
+import { spacing, useStyles } from "../theme";
+import { AppText, Button, Card } from "../ui";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { formatBdt } from "../utils/money";
 
@@ -17,10 +19,9 @@ export default function CheckoutReviewScreen({
   busy,
   error,
 }) {
-  const { colors } = useTheme();
   const { language } = useLanguage();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
 
   return (
     <StackScreenShell
@@ -29,26 +30,46 @@ export default function CheckoutReviewScreen({
       onBack={onBack}
       footer={
         <View>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          <Pressable style={[styles.button, busy && styles.buttonDisabled]} disabled={busy} onPress={onPlaceOrder}>
-          <Text style={styles.buttonText}>{busy ? t("checkout.placingOrder") : t("checkout.placeOrder")}</Text>
-        </Pressable>
+          {error ? (
+            <AppText variant="label" tone="error" style={styles.errorText}>
+              {error}
+            </AppText>
+          ) : null}
+          <Button
+            title={t("checkout.placeOrder")}
+            onPress={onPlaceOrder}
+            loading={busy}
+            size="lg"
+          />
         </View>
       }
     >
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>{t("checkout.items")}</Text>
+      <Card>
+        <AppText variant="h4" style={styles.cardTitle}>
+          {t("checkout.items")}
+        </AppText>
         {cartItems.map((item) => (
           <View key={item.lineId} style={styles.row}>
             <View style={styles.rowText}>
-              <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.itemMeta}>{t("catalog.quantity")} {item.quantity} {t("catalog.perDozen")}</Text>
-              {(item.allocations || []).map((allocation) => <Text key={allocation.productVariantId} style={styles.itemMeta}>{language === 'bn' && item.colorNames?.[allocation.colorCode]?.bn || allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}</Text>)}
+              <AppText variant="bodyStrong">{item.name}</AppText>
+              <AppText variant="label" tone="secondary">
+                {t("catalog.quantity")} {item.quantity} {t("catalog.perDozen")}
+              </AppText>
+              {(item.allocations || []).map((allocation) => (
+                <AllocationLine
+                  key={allocation.productVariantId}
+                  allocation={allocation}
+                  colorNames={item.colorNames}
+                  variant="label"
+                />
+              ))}
             </View>
-            <Text style={styles.itemPrice}>{formatBdt((item.unitPrice ?? item.price) * item.quantity, language)}</Text>
+            <AppText variant="bodySm" tone="primary" style={styles.itemPrice}>
+              {formatBdt((item.unitPrice ?? item.price) * item.quantity, language)}
+            </AppText>
           </View>
         ))}
-      </View>
+      </Card>
       <CheckoutSummaryCard
         rows={[
           { label: t("checkout.shipping"), value: shippingMethod ? t(shippingMethod.labelKey) : "" },
@@ -63,62 +84,25 @@ export default function CheckoutReviewScreen({
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = () =>
   StyleSheet.create({
-    card: {
-      backgroundColor: colors.surface,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 16,
-    },
     cardTitle: {
-      color: colors.textPrimary,
-      fontSize: 18,
-      fontWeight: "700",
-      marginBottom: 12,
+      marginBottom: spacing.md,
     },
     row: {
       flexDirection: "row",
       justifyContent: "space-between",
-      gap: 12,
-      marginBottom: 10,
+      gap: spacing.md,
+      marginBottom: spacing.sm + 2,
     },
     rowText: {
       flex: 1,
     },
-    itemName: {
-      color: colors.textPrimary,
-      fontSize: 15,
-      fontWeight: "700",
-      marginBottom: 2,
-    },
-    itemMeta: {
-      color: colors.textSecondary,
-      fontSize: 13,
-    },
     itemPrice: {
-      color: colors.textPrimary,
-      fontSize: 14,
       fontWeight: "700",
     },
-    button: {
-      height: 50,
-      borderRadius: 16,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#d4af37",
-    },
-    buttonText: {
-      color: "#0a0e27",
-      fontSize: 16,
-      fontWeight: "700",
-    },
-    buttonDisabled: { opacity: 0.5 },
     errorText: {
-      color: "#ff4444",
-      fontSize: 13,
       textAlign: "center",
-      marginBottom: 8,
+      marginBottom: spacing.sm,
     },
   });

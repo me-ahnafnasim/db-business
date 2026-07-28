@@ -1,40 +1,37 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
-import { useTheme } from "../../../theme/ThemeProvider";
+import { spacing, useStyles } from "../../../theme";
+import { AppText } from "../../../ui";
 
 export default function ProfileFooter() {
-  const { colors } = useTheme();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.helpText}>{t("profile.needHelp", { phone: "1-800-123-4567" })}</Text>
-      <Text style={styles.version}>{t("profile.version", { version: "1.0.0" })}</Text>
+      <AppText variant="bodySm" tone="secondary" style={styles.helpText}>
+        {t("profile.needHelp")}
+      </AppText>
+      <AppText variant="label" tone="secondary" style={styles.version}>
+        {t("profile.version", { version: "1.0.0" })}
+      </AppText>
     </View>
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = () =>
   StyleSheet.create({
     container: {
       alignItems: "center",
-      paddingTop: 28,
-      paddingBottom: 10,
+      paddingTop: spacing.xxxl,
+      paddingBottom: spacing.sm + 2,
     },
     helpText: {
-      color: colors.textSecondary,
-      fontSize: 14,
       textAlign: "center",
-      marginBottom: 8,
-    },
-    phone: {
-      color: colors.textPrimary,
-      fontWeight: "700",
+      marginBottom: spacing.sm,
     },
     version: {
-      color: colors.textSecondary,
-      fontSize: 13,
+      fontWeight: "400",
     },
   });

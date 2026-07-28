@@ -1,44 +1,39 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { useLanguage } from "../../../i18n/LanguageProvider";
-import { useTheme } from "../../../theme/ThemeProvider";
+import { spacing, useStyles, useTheme } from "../../../theme";
+import { Button, SummaryRows } from "../../../ui";
 import { formatBdt } from "../../../utils/money";
 
-export default function CartSummaryPanel({
-  subtotal,
-  discount,
-  onCheckout,
-}) {
+export default function CartSummaryPanel({ subtotal, discount, onCheckout }) {
   const { colors } = useTheme();
   const { language } = useLanguage();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
   const total = subtotal - discount;
   const disabled = subtotal <= 0;
 
+  const rows = [{ label: t("cart.subtotal"), value: formatBdt(subtotal, language) }];
+  if (discount > 0) {
+    rows.push({ label: t("cart.discount"), value: `-${formatBdt(discount, language)}` });
+  }
+
   return (
     <View style={styles.summaryPanel}>
-      <View style={styles.summaryRow}>
-        <Text style={styles.summaryLabel}>{t("cart.subtotal")}</Text>
-        <Text style={styles.summaryValue}>{formatBdt(subtotal, language)}</Text>
-      </View>
-      {discount > 0 ? (
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>{t("cart.discount")}</Text>
-          <Text style={styles.summaryValue}>-{formatBdt(discount, language)}</Text>
-        </View>
-      ) : null}
-      <View style={styles.divider} />
-      <View style={styles.summaryRow}>
-        <Text style={styles.totalLabel}>{t("cart.total")}</Text>
-        <Text style={styles.totalValue}>{formatBdt(total, language)}</Text>
-      </View>
-      <Pressable disabled={disabled} style={[styles.checkoutButton, disabled && styles.checkoutButtonDisabled]} onPress={onCheckout}>
-        <Text style={styles.checkoutText}>{t("cart.checkout")}</Text>
-        <Feather name="arrow-right" size={28} color={colors.black} />
-      </Pressable>
+      <SummaryRows
+        rows={rows}
+        total={{ label: t("cart.total"), value: formatBdt(total, language) }}
+        emphasis="lg"
+      />
+      <Button
+        title={t("cart.checkout")}
+        onPress={onCheckout}
+        disabled={disabled}
+        style={styles.checkoutButton}
+        rightIcon={<Feather name="arrow-right" size={20} color={colors.onBrand} />}
+      />
     </View>
   );
 }
@@ -49,53 +44,11 @@ const getStyles = (colors) =>
       borderTopWidth: 1,
       borderTopColor: colors.border,
       backgroundColor: colors.surface,
-      paddingHorizontal: 20,
-      paddingTop: 12,
-      paddingBottom: 12,
-    },
-    summaryRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 10,
-    },
-    summaryLabel: {
-      color: colors.textSecondary,
-      fontSize: 14,
-    },
-    summaryValue: {
-      color: colors.textPrimary,
-      fontSize: 14,
-    },
-    divider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginBottom: 12,
-    },
-    totalLabel: {
-      color: colors.textPrimary,
-      fontSize: 16,
-      fontWeight: "800",
-    },
-    totalValue: {
-      color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: "800",
+      paddingHorizontal: spacing.gutter,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
     },
     checkoutButton: {
-      marginTop: 10,
-      backgroundColor: "#d4af37",
-      borderRadius: 26,
-      paddingVertical: 10,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 12,
+      marginTop: spacing.sm,
     },
-    checkoutText: {
-      color: "#0a0e27",
-      fontSize: 14,
-      fontWeight: "700",
-    },
-    checkoutButtonDisabled: { opacity: 0.4 },
   });

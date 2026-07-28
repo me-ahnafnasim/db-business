@@ -1,68 +1,72 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { useLanguage } from "../i18n/LanguageProvider";
+import { radius, spacing, useStyles } from "../theme";
+import { Chip } from "../ui";
+
+// EN / বাং segmented control.
+//
+// Previously carried an entire parallel palette of its own, including a blue that appears
+// nowhere else in the app. The `dark` variant survives because the launch screen is a
+// fixed dark brand surface regardless of the active theme.
 
 export default function LanguageToggle({ variant = "dark" }) {
   const { language, setLanguage } = useLanguage();
   const { t } = useTranslation();
-  const styles = getStyles(variant);
+  const onDark = variant === "dark";
+  const styles = useStyles((colors) => getStyles(colors, onDark), [onDark]);
 
   return (
-    <View style={styles.container}>
-      <Pressable
-        style={[styles.chip, language === "en" && styles.chipActive]}
+    <View style={[styles.container, onDark && styles.containerOnDark]}>
+      <Chip
+        label="EN"
+        size="sm"
+        selected={language === "en"}
         onPress={() => setLanguage("en")}
-        accessibilityRole="button"
+        tone={onDark ? "inverse" : "secondary"}
         accessibilityLabel={t("common.english")}
-        accessibilityState={{ selected: language === "en" }}
-      >
-        <Text style={[styles.chipText, language === "en" && styles.chipTextActive]}>EN</Text>
-      </Pressable>
-      <Pressable
-        style={[styles.chip, language === "bn" && styles.chipActive]}
+        style={[styles.chip, onDark && styles.chipOnDark, language === "en" && onDark && styles.chipOnDarkActive]}
+      />
+      <Chip
+        label="বাং"
+        size="sm"
+        selected={language === "bn"}
         onPress={() => setLanguage("bn")}
-        accessibilityRole="button"
+        tone={onDark ? "inverse" : "secondary"}
         accessibilityLabel={t("common.bangla")}
-        accessibilityState={{ selected: language === "bn" }}
-      >
-        <Text style={[styles.chipText, language === "bn" && styles.chipTextActive]}>বাং</Text>
-      </Pressable>
+        style={[styles.chip, onDark && styles.chipOnDark, language === "bn" && onDark && styles.chipOnDarkActive]}
+      />
     </View>
   );
 }
 
-const getStyles = (variant) => {
-  const isDark = variant === "dark";
-
-  return StyleSheet.create({
+const getStyles = (colors, onDark) =>
+  StyleSheet.create({
     container: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
-      padding: 4,
-      borderRadius: 999,
-      backgroundColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
+      gap: spacing.xs + 2,
+      padding: spacing.xs,
+      borderRadius: radius.pill,
+      backgroundColor: colors.surfaceSoft,
       borderWidth: 1,
-      borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)",
+      borderColor: colors.border,
+    },
+    containerOnDark: {
+      backgroundColor: "rgba(255, 255, 255, 0.08)",
+      borderColor: "rgba(255, 255, 255, 0.12)",
     },
     chip: {
       minWidth: 44,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      alignItems: "center",
+      minHeight: 36,
     },
-    chipActive: {
-      backgroundColor: isDark ? "rgba(212, 175, 55, 0.25)" : "#dbeafe",
+    chipOnDark: {
+      backgroundColor: "transparent",
+      borderColor: "transparent",
     },
-    chipText: {
-      fontSize: 13,
-      fontWeight: "700",
-      color: isDark ? "#b0bac9" : "#64748b",
-    },
-    chipTextActive: {
-      color: isDark ? "#ffd700" : "#2563eb",
+    chipOnDarkActive: {
+      backgroundColor: colors.brandSoft,
+      borderColor: colors.brand,
     },
   });
-};

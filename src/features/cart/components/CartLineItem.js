@@ -1,78 +1,106 @@
 import Feather from "@expo/vector-icons/Feather";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { useLanguage } from "../../../i18n/LanguageProvider";
 import { getLocalizedProduct } from "../../../i18n/product";
-import { useTheme } from "../../../theme/ThemeProvider";
+import { spacing, useStyles, useTheme } from "../../../theme";
+import { AppText, Card, IconButton } from "../../../ui";
 import { formatBdt } from "../../../utils/money";
+import AllocationLine from "../../order/components/AllocationLine";
 import ProductImage from "../../catalog/components/ProductImage";
 
 export default function CartLineItem({ item, onIncrease, onDecrease, onRemove }) {
   const { colors } = useTheme();
   const { language } = useLanguage();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
   const localizedItem = getLocalizedProduct(item, language);
 
   return (
-    <View style={styles.cartCard}>
+    <Card style={styles.cartCard}>
       <ProductImage uri={item.image} accessibilityLabel={localizedItem.name} style={styles.productImage} borderRadius={16} />
       <View style={styles.productInfo}>
-        <Text numberOfLines={2} style={styles.productName}>
+        <AppText numberOfLines={2} variant="bodyStrong">
           {localizedItem.name}
-        </Text>
-        <Text style={styles.productMeta}>{t("cart.packRecipe")}</Text>
+        </AppText>
+        <AppText variant="caption" tone="secondary">
+          {t("cart.packRecipe")}
+        </AppText>
         {(item.allocations || []).map((allocation) => (
-          <Text key={allocation.productVariantId} style={styles.allocationText}>
-            {language === 'bn' && item.product?.colorNames?.[allocation.colorCode]?.bn || allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}
-          </Text>
+          <AllocationLine
+            key={allocation.productVariantId}
+            allocation={allocation}
+            colorNames={item.product?.colorNames}
+            variant="micro"
+          />
         ))}
-        {!item.moqSatisfied ? <Text style={styles.moqWarning}>{t("cart.moqRemaining", { count: item.moqRemaining })}</Text> : null}
-        {!item.configurationValid ? <Text style={styles.moqWarning}>{t("cart.packInvalid")}</Text> : null}
-        {item.discountPercent ? <Text style={styles.originalPrice}>{formatBdt((item.unitPrice ?? item.price) * item.quantity, language)}</Text> : null}
-        <Text style={styles.productPrice}>{formatBdt((item.discountedUnitPrice ?? item.unitPrice ?? item.price) * item.quantity, language)}</Text>
-        <Text style={styles.productMeta}>{t("cart.quantityUnit")}</Text>
+        {!item.moqSatisfied ? (
+          <AppText variant="micro" tone="error" style={styles.warning}>
+            {t("cart.moqRemaining", { count: item.moqRemaining })}
+          </AppText>
+        ) : null}
+        {!item.configurationValid ? (
+          <AppText variant="micro" tone="error" style={styles.warning}>
+            {t("cart.packInvalid")}
+          </AppText>
+        ) : null}
+        {item.discountPercent ? (
+          <AppText variant="caption" tone="secondary" style={styles.originalPrice}>
+            {formatBdt((item.unitPrice ?? item.price) * item.quantity, language)}
+          </AppText>
+        ) : null}
+        <AppText variant="h3" style={styles.productPrice}>
+          {formatBdt((item.discountedUnitPrice ?? item.unitPrice ?? item.price) * item.quantity, language)}
+        </AppText>
+        <AppText variant="caption" tone="secondary">
+          {t("cart.quantityUnit")}
+        </AppText>
         <View style={styles.controlsRow}>
-          <Pressable
-            style={[styles.qtyButton, item.quantity <= 1 && styles.qtyButtonDisabled]}
+          <IconButton
+            label={t("cart.decrease", { name: localizedItem.name })}
             onPress={onDecrease}
-            accessibilityRole="button"
-            accessibilityLabel={t("cart.decrease", { name: localizedItem.name })}
+            disabled={item.quantity <= 1}
+            size="lg"
+            tone="bordered"
           >
             <Feather name="minus" size={22} color={colors.textSecondary} />
-          </Pressable>
-          <Text style={styles.quantityText}>{item.quantity}</Text>
-          <Pressable style={styles.qtyButtonActive} onPress={onIncrease} accessibilityRole="button" accessibilityLabel={t("cart.increase", { name: localizedItem.name })}>
-            <Feather name="plus" size={22} color={colors.black} />
-          </Pressable>
+          </IconButton>
+          <AppText variant="h3" style={styles.quantityText}>
+            {item.quantity}
+          </AppText>
+          <IconButton
+            label={t("cart.increase", { name: localizedItem.name })}
+            onPress={onIncrease}
+            size="lg"
+            tone="brand"
+          >
+            <Feather name="plus" size={22} color={colors.onBrand} />
+          </IconButton>
         </View>
       </View>
-      <Pressable style={styles.deleteButton} onPress={onRemove} accessibilityRole="button" accessibilityLabel={t("cart.removeItem", { name: localizedItem.name })}>
-        <Ionicons name="trash-outline" size={28} color={colors.accent} />
-      </Pressable>
-    </View>
+      <IconButton
+        label={t("cart.removeItem", { name: localizedItem.name })}
+        onPress={onRemove}
+        tone="plain"
+        style={styles.deleteButton}
+      >
+        <Ionicons name="trash-outline" size={26} color={colors.error} />
+      </IconButton>
+    </Card>
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = () =>
   StyleSheet.create({
     cartCard: {
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 28,
-      padding: 14,
+      padding: spacing.lg - 2,
       flexDirection: "row",
       alignItems: "center",
-      gap: 14,
-      marginBottom: 18,
+      gap: spacing.lg - 2,
+      marginBottom: spacing.lg + 2,
       position: "relative",
-      shadowColor: colors.black,
-      shadowOpacity: 0.08,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 8 },
     },
     productImage: {
       width: 82,
@@ -80,71 +108,33 @@ const getStyles = (colors) =>
     },
     productInfo: {
       flex: 1,
-      paddingRight: 34,
+      paddingRight: spacing.x4 + 2,
     },
-    productName: {
-      color: colors.textPrimary,
-      fontSize: 16,
-      fontWeight: "700",
-      lineHeight: 24,
-      marginBottom: 6,
+    warning: {
+      marginTop: spacing.xs,
     },
-    productMeta: {
-      color: colors.textSecondary,
-      fontSize: 12,
-      lineHeight: 18,
+    originalPrice: {
+      textDecorationLine: "line-through",
+      marginTop: spacing.xs,
     },
-    allocationText: { color: colors.textSecondary, fontSize: 11, lineHeight: 16 },
-    moqWarning: { color: colors.accent, fontSize: 11, fontWeight: "700", marginTop: 4 },
     productPrice: {
-      color: colors.textPrimary,
-      fontSize: 19,
-      fontWeight: "800",
-      marginBottom: 12,
-      marginTop: 4,
+      marginTop: spacing.xs,
+      marginBottom: spacing.md,
     },
-    originalPrice: { color: colors.textSecondary, fontSize: 12, textDecorationLine: "line-through", marginTop: 4 },
     controlsRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 14,
-    },
-    qtyButton: {
-      width: 42,
-      height: 42,
-      borderRadius: 21,
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.surfaceSoft,
-    },
-    qtyButtonDisabled: {
-      opacity: 0.45,
-    },
-    qtyButtonActive: {
-      width: 42,
-      height: 42,
-      borderRadius: 21,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.white,
+      gap: spacing.lg - 2,
+      marginTop: spacing.sm,
     },
     quantityText: {
-      color: colors.textPrimary,
-      fontSize: 20,
-      fontWeight: "700",
       minWidth: 22,
       textAlign: "center",
     },
     deleteButton: {
       position: "absolute",
-      right: 16,
+      right: spacing.lg,
       top: "50%",
       marginTop: -18,
-      width: 36,
-      height: 36,
-      alignItems: "center",
-      justifyContent: "center",
     },
   });

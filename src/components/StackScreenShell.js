@@ -1,10 +1,13 @@
 import Feather from "@expo/vector-icons/Feather";
 import { StatusBar } from "expo-status-bar";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 
-import { useTheme } from "../theme/ThemeProvider";
+import { elevation, spacing, useStyles, useTheme } from "../theme";
+import { AppText, IconButton } from "../ui";
+
+// Layout for pushed screens: back button, title, body, optional sticky footer.
 
 export default function StackScreenShell({
   title,
@@ -12,16 +15,18 @@ export default function StackScreenShell({
   onBack,
   scrollable = true,
   footer,
+  refreshControl,
   children,
 }) {
   const { colors, isDarkMode } = useTheme();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
   const ContentWrapper = scrollable ? ScrollView : View;
   const contentProps = scrollable
     ? {
         showsVerticalScrollIndicator: false,
         contentContainerStyle: styles.scrollContent,
+        refreshControl,
       }
     : {
         style: styles.fixedContent,
@@ -32,12 +37,16 @@ export default function StackScreenShell({
       <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={colors.surface} />
       <View style={styles.container}>
         <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={onBack} accessibilityRole="button" accessibilityLabel={t("common.back")}>
+          <IconButton label={t("common.back")} onPress={onBack}>
             <Feather name="chevron-left" size={22} color={colors.textPrimary} />
-          </Pressable>
+          </IconButton>
           <View style={styles.headerText}>
-            <Text style={styles.title}>{title}</Text>
-            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+            <AppText variant="h2">{title}</AppText>
+            {subtitle ? (
+              <AppText variant="bodySm" tone="secondary" style={styles.subtitle}>
+                {subtitle}
+              </AppText>
+            ) : null}
           </View>
         </View>
         <ContentWrapper {...contentProps}>{children}</ContentWrapper>
@@ -60,49 +69,36 @@ const getStyles = (colors) =>
     header: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 14,
-      paddingHorizontal: 20,
-      paddingTop: 14,
-      paddingBottom: 14,
+      gap: spacing.lg - 2,
+      paddingHorizontal: spacing.gutter,
+      paddingTop: spacing.lg - 2,
+      paddingBottom: spacing.lg - 2,
       backgroundColor: colors.surface,
-    },
-    backButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 12,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.surfaceSoft,
     },
     headerText: {
       flex: 1,
     },
-    title: {
-      color: colors.textPrimary,
-      fontSize: 24,
-      fontWeight: "800",
-    },
     subtitle: {
-      color: colors.textSecondary,
-      fontSize: 14,
-      marginTop: 4,
+      marginTop: spacing.xs,
     },
     scrollContent: {
-      paddingHorizontal: 20,
-      paddingTop: 20,
-      paddingBottom: 28,
+      paddingHorizontal: spacing.gutter,
+      paddingTop: spacing.xl,
+      paddingBottom: spacing.xxxl,
     },
     fixedContent: {
       flex: 1,
-      paddingHorizontal: 20,
-      paddingTop: 20,
+      paddingHorizontal: spacing.gutter,
+      paddingTop: spacing.xl,
     },
     footer: {
-      paddingHorizontal: 20,
-      paddingTop: 12,
-      paddingBottom: 18,
+      paddingHorizontal: spacing.gutter,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.lg + 2,
       backgroundColor: colors.surface,
       borderTopWidth: 1,
       borderTopColor: colors.border,
+      // A sticky footer floats over the scrolling body, so it earns a shadow.
+      ...elevation(1, colors.shadow),
     },
   });

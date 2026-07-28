@@ -13,7 +13,8 @@
     "noCharge": "No charge",
     "previous": "Previous",
     "next": "Next",
-    "back": "Go back"
+    "back": "Go back",
+    "clear": "Clear"
   },
   "launch": {
     "subtitle": "PREMIUM FOOTWEAR",
@@ -122,12 +123,15 @@
     "checkout": "Checkout",
     "removeItem": "Remove {{name}}",
     "decrease": "Decrease {{name}} quantity",
-    "increase": "Increase {{name}} quantity"
-    ,"packRecipe": "12-pair recipe"
-    ,"pairs": "{{count}} pairs"
-    ,"moqRemaining": "Add {{count}} more dozen to meet this shoe's MOQ."
-    ,"moqNotMet": "Meet the MOQ for every shoe before checkout."
-    ,"packInvalid": "This pack no longer matches the current product rules. Remove it and rebuild."
+    "increase": "Increase {{name}} quantity",
+    "packRecipe": "12-pair recipe",
+    "pairs": "{{count}} pairs",
+    "moqRemaining": "Add {{count}} more dozen to meet this shoe's MOQ.",
+    "moqNotMet": "Meet the MOQ for every shoe before checkout.",
+    "packInvalid": "This pack no longer matches the current product rules. Remove it and rebuild.",
+    "emptyTitle": "Your cart is empty",
+    "emptySubtitle": "Browse our latest collection and add items to your cart",
+    "browseProducts": "Browse Products"
   },
   "checkout": {
     "shippingTitle": "Shipping",
@@ -244,7 +248,7 @@
     "trackOrder": "Track Order",
     "expenseTracker": "Expense Tracker",
     "expenseTrackerSub": "Payment history & outstanding",
-    "needHelp": "Need help? Call us at {{phone}}",
+    "needHelp": "Need help? Contact support",
     "version": "Version {{version}}"
   },
   "profileCompletion": {
@@ -311,5 +315,19 @@
     "googleConfiguration": "Google Sign-In configuration does not match this APK. Verify its package name, SHA-1, and OAuth client, then rebuild.",
     "playServices": "Google Play Services is unavailable. Use a Google Play emulator image or update Play Services.",
     "signInProgress": "Google Sign-In is already in progress."
+  },
+  "product_configurator": {
+    "select_colors": "Select {{count}} color(s)",
+    "min_pairs_per_size": "Each size needs at least 2 pairs",
+    "pairs_per_dozen": "Pairs per dozen",
+    "min_2_pairs": "Minimum 2 pairs per size",
+    "add_dozen_to_cart": "Add {{count}} dozen to cart"
+  },
+  "festival": {
+    "days": "Days",
+    "hours": "Hours",
+    "minutes": "Min",
+    "seconds": "Sec",
+    "off": "OFF"
   }
 }

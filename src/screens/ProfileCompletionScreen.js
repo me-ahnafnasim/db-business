@@ -1,13 +1,5 @@
-import { useState, useEffect } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { useRef, useState, useEffect } from "react";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,9 +13,14 @@ import {
   getDivisions,
 } from "../services/api";
 
+import { radius, spacing, useStyles, useTheme } from "../theme";
+import { AppText, Button, Chip, FormField, Input, KeyboardAwareScreen } from "../ui";
+
 export default function ProfileCompletionScreen({ auth, onComplete }) {
   const { t } = useTranslation();
   const { language } = useLanguage();
+  const { colors, isDarkMode } = useTheme();
+  const styles = useStyles(getStyles);
   const [loading, setLoading] = useState(false);
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState(null);
@@ -31,6 +28,16 @@ export default function ProfileCompletionScreen({ auth, onComplete }) {
 
   // Geographic data
   const [divisions, setDivisions] = useState([]);
+
+  // Focus chain across the form's nine fields.
+  const phoneRef = useRef(null);
+  const shopRef = useRef(null);
+  const companyRef = useRef(null);
+  const companyBnRef = useRef(null);
+  const tradeLicenseRef = useRef(null);
+  const districtRef = useRef(null);
+  const thanaRef = useRef(null);
+  const bazarRef = useRef(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -124,140 +131,157 @@ export default function ProfileCompletionScreen({ auth, onComplete }) {
   };
 
   const renderPicker = (label, value, options, onSelect, placeholder) => (
-    <View style={styles.fieldGroup}>
-      <Text style={styles.label}>{label}</Text>
-      {!geoLoading && !options.length ? <Text style={styles.emptyOption}>{placeholder}</Text> : null}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+    <FormField label={label}>
+      {!geoLoading && !options.length ? (
+        <AppText variant="label" tone="secondary" style={styles.emptyOption}>
+          {placeholder}
+        </AppText>
+      ) : null}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipScroll}>
         {options.map((opt) => (
-          <Pressable
+          <Chip
             key={opt.id}
-            style={[
-              styles.chip,
-              value === opt.id && styles.chipSelected,
-            ]}
+            label={language === "bn" ? opt.nameBn || opt.name : opt.name}
+            selected={value === opt.id}
             onPress={() => onSelect(opt.id)}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                value === opt.id && styles.chipTextSelected,
-              ]}
-            >
-              {language === "bn" ? opt.nameBn || opt.name : opt.name}
-            </Text>
-          </Pressable>
+            size="sm"
+          />
         ))}
       </ScrollView>
-    </View>
+    </FormField>
   );
 
   return (
     <LinearGradient
-      colors={["#0a0e27", "#1a1f3a", "#0f1729"]}
+      colors={[colors.background, colors.surface, colors.surfaceSoft]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.gradient}
     >
-      <StatusBar style="light" />
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
         <View style={styles.header}>
-          <AntDesign name="user" size={32} color="#ffd700" />
-          <Text style={styles.headerTitle}>{t("profileCompletion.title")}</Text>
-          <Text style={styles.headerSubtitle}>{t("profileCompletion.subtitle")}</Text>
+          <AntDesign name="user" size={32} color={colors.brand} />
+          <AppText variant="h2" style={styles.headerTitle}>
+            {t("profileCompletion.title")}
+          </AppText>
+          <AppText variant="label" tone="secondary" style={styles.headerSubtitle}>
+            {t("profileCompletion.subtitle")}
+          </AppText>
         </View>
 
-        <ScrollView
-          style={styles.scrollContainer}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+        <KeyboardAwareScreen contentContainerStyle={styles.scrollContent}>
           {geoError ? (
             <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{geoError}</Text>
-              <Pressable style={styles.retryGeoButton} onPress={loadDivisions}>
-                <Text style={styles.retryGeoText}>{t("profileCompletion.reloadLocations")}</Text>
-              </Pressable>
+              <AppText variant="label" tone="error">
+                {geoError}
+              </AppText>
+              <Button
+                title={t("profileCompletion.reloadLocations")}
+                onPress={loadDivisions}
+                variant="ghost"
+                size="sm"
+                fullWidth={false}
+                style={styles.retryGeoButton}
+              />
             </View>
           ) : null}
           {/* Personal Info */}
-          <Text style={styles.sectionTitle}>{t("profileCompletion.personal")}</Text>
+          <AppText variant="label" tone="brand" style={styles.sectionTitle}>
+            {t("profileCompletion.personal")}
+          </AppText>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t("profileCompletion.fullName")}</Text>
-            <TextInput
-              style={styles.input}
+          <FormField label={t("profileCompletion.fullName")} required>
+            <Input
               value={form.name}
               onChangeText={(v) => updateForm("name", v)}
               placeholder={t("profileCompletion.fullNamePlaceholder")}
-              placeholderTextColor="#64748b"
+              autoComplete="name"
+              autoCapitalize="words"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => phoneRef.current?.focus()}
             />
-          </View>
+          </FormField>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t("profileCompletion.phone")}</Text>
-            <TextInput
-              style={styles.input}
+          <FormField label={t("profileCompletion.phone")} required>
+            <Input
+              ref={phoneRef}
               value={form.phone}
               onChangeText={(v) => updateForm("phone", v)}
               placeholder="01XXXXXXXXX"
-              placeholderTextColor="#64748b"
               keyboardType="phone-pad"
+              autoComplete="tel"
               maxLength={11}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => shopRef.current?.focus()}
             />
-          </View>
+          </FormField>
 
           {/* Business Info */}
-          <Text style={styles.sectionTitle}>{t("profileCompletion.business")}</Text>
+          <AppText variant="label" tone="brand" style={styles.sectionTitle}>
+            {t("profileCompletion.business")}
+          </AppText>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t("profileCompletion.shopName")}</Text>
-            <TextInput
-              style={styles.input}
+          <FormField label={t("profileCompletion.shopName")} required>
+            <Input
+              ref={shopRef}
               value={form.shopName}
               onChangeText={(v) => updateForm("shopName", v)}
               placeholder={t("profileCompletion.shopNamePlaceholder")}
-              placeholderTextColor="#64748b"
+              autoCapitalize="words"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => companyRef.current?.focus()}
             />
-          </View>
+          </FormField>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t("profileCompletion.companyName")}</Text>
-            <TextInput
-              style={styles.input}
+          <FormField label={t("profileCompletion.companyName")}>
+            <Input
+              ref={companyRef}
               value={form.companyName}
               onChangeText={(v) => updateForm("companyName", v)}
               placeholder={t("profileCompletion.companyPlaceholder")}
-              placeholderTextColor="#64748b"
+              autoCapitalize="words"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => companyBnRef.current?.focus()}
             />
-          </View>
+          </FormField>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t("profileCompletion.companyNameBn")}</Text>
-            <TextInput
-              style={styles.input}
+          <FormField label={t("profileCompletion.companyNameBn")}>
+            <Input
+              ref={companyBnRef}
               value={form.companyNameBn}
               onChangeText={(v) => updateForm("companyNameBn", v)}
-              placeholder="কোম্পানির নাম (ঐচ্ছিক)"
-              placeholderTextColor="#64748b"
+              placeholder={t("profileCompletion.companyPlaceholder")}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => tradeLicenseRef.current?.focus()}
             />
-          </View>
+          </FormField>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t("profileCompletion.tradeLicense")}</Text>
-            <TextInput
-              style={styles.input}
+          <FormField label={t("profileCompletion.tradeLicense")}>
+            <Input
+              ref={tradeLicenseRef}
               value={form.tradeLicenseNumber}
               onChangeText={(v) => updateForm("tradeLicenseNumber", v)}
               placeholder={t("profileCompletion.tradeLicensePlaceholder")}
-              placeholderTextColor="#64748b"
+              autoCapitalize="characters"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => districtRef.current?.focus()}
             />
-          </View>
+          </FormField>
 
           {/* Location */}
-          <Text style={styles.sectionTitle}>{t("profileCompletion.location")}</Text>
+          <AppText variant="label" tone="brand" style={styles.sectionTitle}>
+            {t("profileCompletion.location")}
+          </AppText>
 
           {geoLoading && (
-            <ActivityIndicator size="small" color="#ffd700" style={{ marginVertical: 10 }} />
+            <ActivityIndicator size="small" color={colors.brand} style={styles.geoLoader} />
           )}
 
           {renderPicker(
@@ -268,167 +292,121 @@ export default function ProfileCompletionScreen({ auth, onComplete }) {
             t("profileCompletion.selectDivision")
           )}
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t("profileCompletion.district")}</Text>
-            <TextInput
-              style={styles.input}
+          <FormField label={t("profileCompletion.district")} required>
+            <Input
+              ref={districtRef}
               value={form.districtName}
               onChangeText={(value) => updateForm("districtName", value)}
               placeholder={t("profileCompletion.districtPlaceholder")}
-              placeholderTextColor="#64748b"
+              autoCapitalize="words"
               maxLength={100}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => thanaRef.current?.focus()}
             />
-          </View>
+          </FormField>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t("profileCompletion.thana")}</Text>
-            <TextInput
-              style={styles.input}
+          <FormField label={t("profileCompletion.thana")} required>
+            <Input
+              ref={thanaRef}
               value={form.thanaName}
               onChangeText={(value) => updateForm("thanaName", value)}
               placeholder={t("profileCompletion.thanaPlaceholder")}
-              placeholderTextColor="#64748b"
+              autoCapitalize="words"
               maxLength={100}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => bazarRef.current?.focus()}
             />
-          </View>
+          </FormField>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>{t("profileCompletion.bazar")}</Text>
-            <TextInput
-              style={styles.input}
+          <FormField label={t("profileCompletion.bazar")}>
+            <Input
+              ref={bazarRef}
               value={form.bazarName}
               onChangeText={(v) => updateForm("bazarName", v)}
               placeholder={t("profileCompletion.bazarPlaceholder")}
-              placeholderTextColor="#64748b"
+              autoCapitalize="words"
+              returnKeyType="done"
             />
-          </View>
+          </FormField>
 
           {error ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
+            <View style={styles.errorBox} accessibilityLiveRegion="assertive">
+              <AppText variant="label" tone="error">
+                {error}
+              </AppText>
             </View>
           ) : null}
 
-          <Pressable
-            style={({ pressed }) => [
-              styles.submitBtn,
-              pressed && styles.submitBtnPressed,
-              loading && styles.submitBtnDisabled,
-            ]}
+          <Button
+            title={t("profileCompletion.save")}
             onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#0a0e27" />
-            ) : (
-              <Text style={styles.submitBtnText}>{t("profileCompletion.save")}</Text>
-            )}
-          </Pressable>
-
-          <View style={{ height: 40 }} />
-        </ScrollView>
+            loading={loading}
+            size="lg"
+            style={styles.submitBtn}
+          />
+        </KeyboardAwareScreen>
       </SafeAreaView>
     </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
-  gradient: { flex: 1 },
-  safeArea: { flex: 1 },
-  header: {
-    alignItems: "center",
-    paddingTop: 20,
-    paddingBottom: 16,
-    paddingHorizontal: 24,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#e8e8e8",
-    marginTop: 12,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: "#b0bac9",
-    marginTop: 4,
-    textAlign: "center",
-  },
-  scrollContainer: { flex: 1 },
-  scrollContent: { paddingHorizontal: 24, paddingTop: 8 },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#ffd700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginTop: 20,
-    marginBottom: 12,
-  },
-  fieldGroup: { marginBottom: 16 },
-  label: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#b0bac9",
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(212, 175, 55, 0.2)",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    color: "#e8e8e8",
-  },
-  chipScroll: { flexDirection: "row" },
-  chip: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderWidth: 1,
-    borderColor: "rgba(212, 175, 55, 0.2)",
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginRight: 8,
-  },
-  chipSelected: {
-    backgroundColor: "rgba(212, 175, 55, 0.2)",
-    borderColor: "#ffd700",
-  },
-  chipText: {
-    fontSize: 13,
-    color: "#b0bac9",
-    fontWeight: "500",
-  },
-  chipTextSelected: { color: "#ffd700" },
-  emptyOption: { color: "#94a3b8", fontSize: 13, marginBottom: 8 },
-  errorBox: {
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.3)",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-  },
-  errorText: { color: "#ef4444", fontSize: 13, fontWeight: "500" },
-  retryGeoButton: { alignSelf: "flex-start", marginTop: 10, borderColor: "#ffd700", borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 },
-  retryGeoText: { color: "#ffd700", fontSize: 13, fontWeight: "700" },
-  submitBtn: {
-    backgroundColor: "#ffd700",
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  submitBtnPressed: {
-    backgroundColor: "#d4af37",
-    transform: [{ scale: 0.97 }],
-  },
-  submitBtnDisabled: { opacity: 0.6 },
-  submitBtnText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0a0e27",
-    letterSpacing: 0.5,
-  },
-});
+const getStyles = (colors) =>
+  StyleSheet.create({
+    gradient: { flex: 1 },
+    safeArea: { flex: 1 },
+    header: {
+      alignItems: "center",
+      paddingTop: spacing.xl,
+      paddingBottom: spacing.lg,
+      paddingHorizontal: spacing.xxl,
+    },
+    headerTitle: {
+      marginTop: spacing.md,
+    },
+    headerSubtitle: {
+      marginTop: spacing.xs,
+      textAlign: "center",
+      fontWeight: "400",
+    },
+    // Bottom padding replaces the manual spacer view that used to sit after the button.
+    scrollContent: {
+      paddingHorizontal: spacing.xxl,
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.x5,
+    },
+    sectionTitle: {
+      letterSpacing: 1,
+      textTransform: "uppercase",
+      marginTop: spacing.xl,
+      marginBottom: spacing.md,
+    },
+    chipScroll: {
+      flexDirection: "row",
+      gap: spacing.sm,
+    },
+    emptyOption: {
+      marginBottom: spacing.sm,
+      fontWeight: "400",
+    },
+    geoLoader: {
+      marginVertical: spacing.sm + 2,
+    },
+    errorBox: {
+      backgroundColor: colors.errorSoft,
+      borderWidth: 1,
+      borderColor: colors.errorBorder,
+      borderRadius: radius.xs,
+      padding: spacing.md,
+      marginBottom: spacing.lg,
+    },
+    retryGeoButton: {
+      alignSelf: "flex-start",
+      marginTop: spacing.sm + 2,
+      paddingHorizontal: 0,
+    },
+    submitBtn: {
+      marginTop: spacing.sm,
+    },
+  });

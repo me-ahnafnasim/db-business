@@ -1,140 +1,95 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { useLanguage } from "../../../i18n/LanguageProvider";
-import { useTheme } from "../../../theme/ThemeProvider";
+import { spacing, useStyles } from "../../../theme";
+import { AppText, Button, Card, SummaryRows } from "../../../ui";
 import { formatBdt } from "../../../utils/money";
+import AllocationLine from "./AllocationLine";
 
 export default function OrderConfirmationCard({ order, onTrackOrder, onContinueShopping }) {
-  const { colors } = useTheme();
   const { language } = useLanguage();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
 
   if (!order) {
     return null;
   }
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>{t("confirmation.success")}</Text>
-      <Text style={styles.subtitle}>{t("confirmation.subtitle")}</Text>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t("confirmation.status")}</Text>
-        <Text style={styles.value}>{t(`status.${String(order.status || "pending").toLowerCase()}`)}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t("confirmation.orderNumber")}</Text>
-        <Text style={styles.value}>{order.id}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t("confirmation.items")}</Text>
-        <Text style={styles.value}>{order.itemCount}</Text>
-      </View>
+    <Card style={styles.card}>
+      <AppText variant="h2" style={styles.title}>
+        {t("confirmation.success")}
+      </AppText>
+      <AppText variant="bodySm" tone="secondary" style={styles.subtitle}>
+        {t("confirmation.subtitle")}
+      </AppText>
+      <SummaryRows
+        rows={[
+          { label: t("confirmation.status"), value: t(`status.${String(order.status || "pending").toLowerCase()}`) },
+          { label: t("confirmation.orderNumber"), value: order.id },
+          { label: t("confirmation.items"), value: order.itemCount },
+        ]}
+      />
       {(order.packs || []).map((pack) => (
         <View key={pack.lineId || pack.id} style={styles.pack}>
-          <Text style={styles.packTitle}>{pack.name} · {pack.quantity} {t("catalog.perDozen")}</Text>
-          {(pack.allocations || []).map((allocation) => <Text key={allocation.productVariantId} style={styles.packMeta}>{language === 'bn' && pack.colorNames?.[allocation.colorCode]?.bn || allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}</Text>)}
+          <AppText variant="caption" tone="primary" style={styles.packTitle}>
+            {pack.name} · {pack.quantity} {t("catalog.perDozen")}
+          </AppText>
+          {(pack.allocations || []).map((allocation) => (
+            <AllocationLine
+              key={allocation.productVariantId}
+              allocation={allocation}
+              colorNames={pack.colorNames}
+              variant="micro"
+            />
+          ))}
         </View>
       ))}
-      <View style={styles.row}>
-        <Text style={styles.label}>{t("confirmation.shipping")}</Text>
-        <Text style={styles.value}>{t(order.shippingMethodKey || "checkout.pickup")}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t("confirmation.payment")}</Text>
-        <Text style={styles.value}>{t(order.paymentMethodKey || "status.unpaid")}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t("confirmation.delivery")}</Text>
-        <Text style={styles.value}>{t(order.etaKey || "checkout.pickupDescription")}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t("confirmation.total")}</Text>
-        <Text style={styles.total}>{formatBdt(order.total, language)}</Text>
-      </View>
-      <Pressable style={styles.primaryButton} onPress={onTrackOrder}>
-        <Text style={styles.primaryText}>{t("confirmation.track")}</Text>
-      </Pressable>
-      <Pressable style={styles.secondaryButton} onPress={onContinueShopping}>
-        <Text style={styles.secondaryText}>{t("confirmation.continueShopping")}</Text>
-      </Pressable>
-    </View>
+      <SummaryRows
+        rows={[
+          { label: t("confirmation.shipping"), value: t(order.shippingMethodKey || "checkout.pickup") },
+          { label: t("confirmation.payment"), value: t(order.paymentMethodKey || "status.unpaid") },
+          { label: t("confirmation.delivery"), value: t(order.etaKey || "checkout.pickupDescription") },
+        ]}
+        total={{ label: t("confirmation.total"), value: formatBdt(order.total, language) }}
+        style={styles.totals}
+      />
+      <Button title={t("confirmation.track")} onPress={onTrackOrder} size="lg" style={styles.action} />
+      <Button
+        title={t("confirmation.continueShopping")}
+        onPress={onContinueShopping}
+        variant="secondary"
+        size="lg"
+        style={styles.action}
+      />
+    </Card>
   );
 }
 
 const getStyles = (colors) =>
   StyleSheet.create({
     card: {
-      backgroundColor: colors.surface,
-      borderRadius: 24,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 18,
+      padding: spacing.lg + 2,
     },
     title: {
-      color: colors.textPrimary,
-      fontSize: 24,
-      fontWeight: "800",
-      marginBottom: 8,
+      marginBottom: spacing.sm,
     },
     subtitle: {
-      color: colors.textSecondary,
-      fontSize: 15,
-      lineHeight: 22,
-      marginBottom: 18,
+      marginBottom: spacing.lg + 2,
     },
-    row: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 12,
-      gap: 12,
+    pack: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingVertical: spacing.sm,
     },
-    label: {
-      color: colors.textSecondary,
-      fontSize: 14,
-      flex: 1,
-    },
-    value: {
-      color: colors.textPrimary,
-      fontSize: 14,
-      fontWeight: "600",
-    },
-    pack: { borderTopWidth: 1, borderTopColor: colors.border, paddingVertical: 8 },
-    packTitle: { color: colors.textPrimary, fontSize: 12, fontWeight: "700" },
-    packMeta: { color: colors.textSecondary, fontSize: 11, marginTop: 3 },
-    total: {
-      color: colors.textPrimary,
-      fontSize: 18,
-      fontWeight: "800",
-    },
-    primaryButton: {
-      marginTop: 10,
-      height: 50,
-      borderRadius: 16,
-      backgroundColor: "#d4af37",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    primaryText: {
-      color: "#0a0e27",
-      fontSize: 16,
+    packTitle: {
       fontWeight: "700",
     },
-    secondaryButton: {
-      marginTop: 10,
-      height: 50,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.surfaceSoft,
+    totals: {
+      marginTop: spacing.sm,
     },
-    secondaryText: {
-      color: colors.textPrimary,
-      fontSize: 16,
-      fontWeight: "700",
+    action: {
+      marginTop: spacing.sm + 2,
     },
   });

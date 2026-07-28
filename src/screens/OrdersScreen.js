@@ -1,19 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { RefreshControl, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import StackScreenShell from "../components/StackScreenShell";
+import AllocationLine from "../features/order/components/AllocationLine";
 import { cancelOrder, getClientOrders } from "../services/api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { getLocalizedError } from "../i18n/errors";
 import { formatBdt, formatDate, paisaToBdt } from "../utils/money";
-import { useTheme } from "../theme/ThemeProvider";
+import { spacing, useStyles, useTheme } from "../theme";
+import { AppText, AsyncStateView, Button, Card } from "../ui";
 
 export default function OrdersScreen({ onBack }) {
   const { colors } = useTheme();
   const { language } = useLanguage();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
   const [orders, setOrders] = useState([]);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
@@ -54,67 +56,128 @@ export default function OrdersScreen({ onBack }) {
   };
 
   return (
-    <StackScreenShell title={t("orders.title")} subtitle={t("orders.subtitle")} onBack={onBack}>
-      <Pressable style={styles.refreshButton} onPress={loadOrders} accessibilityRole="button">
-        <Text style={styles.refreshText}>{t("common.refresh")}</Text>
-      </Pressable>
-      {status === "loading" ? <ActivityIndicator size="large" color={colors.tabActive} /> : null}
-      {status === "error" ? (
-        <View style={styles.messageCard}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={loadOrders}><Text style={styles.retryText}>{t("common.retry")}</Text></Pressable>
-        </View>
+    <StackScreenShell
+      title={t("orders.title")}
+      subtitle={t("orders.subtitle")}
+      onBack={onBack}
+      refreshControl={
+        <RefreshControl
+          refreshing={status === "loading"}
+          onRefresh={loadOrders}
+          tintColor={colors.brand}
+          colors={[colors.brand]}
+        />
+      }
+    >
+      <Button
+        title={t("common.refresh")}
+        onPress={loadOrders}
+        variant="secondary"
+        size="sm"
+        fullWidth={false}
+        style={styles.refreshButton}
+      />
+      <AsyncStateView
+        status={status}
+        error={error}
+        onRetry={loadOrders}
+        isEmpty={!orders.length}
+        emptyTitle={t("orders.empty")}
+      />
+      {error && status === "ready" ? (
+        <AppText variant="bodySm" tone="error" style={styles.errorText}>
+          {error}
+        </AppText>
       ) : null}
-      {status === "ready" && !orders.length ? (
-        <View style={styles.messageCard}><Text style={styles.emptyText}>{t("orders.empty")}</Text></View>
-      ) : null}
-      {error && status === "ready" ? <Text style={styles.errorText}>{error}</Text> : null}
       {orders.map((order) => (
-        <View key={String(order.id)} style={styles.card}>
+        <Card key={String(order.id)} style={styles.card}>
           <View style={styles.row}>
-            <Text style={styles.orderNumber}>{order.orderNumber}</Text>
-            <Text style={styles.status}>{t(`status.${String(order.workflowStatus || order.status).toLowerCase()}`)}</Text>
+            <AppText variant="bodyStrong" style={styles.orderNumber}>
+              {order.orderNumber}
+            </AppText>
+            <AppText variant="caption" tone="brand" style={styles.status}>
+              {t(`status.${String(order.workflowStatus || order.status).toLowerCase()}`)}
+            </AppText>
           </View>
-          <Text style={styles.meta}>{formatDate(order.createdAt, language)} · {t("orders.lines", { count: order.items?.length || 0 })}</Text>
+          <AppText variant="label" tone="secondary" style={styles.meta}>
+            {formatDate(order.createdAt, language)} · {t("orders.lines", { count: order.items?.length || 0 })}
+          </AppText>
           {(order.items || []).map((item) => (
             <View key={String(item.id)} style={styles.pack}>
-              <Text style={styles.packTitle}>{item.productName} · {item.quantityDozen} {t("catalog.perDozen")}</Text>
-              {(item.allocations || []).map((allocation) => <Text key={String(allocation.productVariantId)} style={styles.meta}>{language === 'bn' && item.colorNames?.[allocation.colorCode]?.bn || allocation.colorCode} · {t("catalog.size")} {allocation.sizeCode} · {t("cart.pairs", { count: allocation.pairsPerDozen })}</Text>)}
+              <AppText variant="caption" style={styles.packTitle}>
+                {item.productName} · {item.quantityDozen} {t("catalog.perDozen")}
+              </AppText>
+              {(item.allocations || []).map((allocation) => (
+                <AllocationLine
+                  key={String(allocation.productVariantId)}
+                  allocation={allocation}
+                  colorNames={item.colorNames}
+                  variant="label"
+                />
+              ))}
             </View>
           ))}
-          <Text style={styles.total}>{formatBdt(paisaToBdt(order.grandTotalPaisa), language)}</Text>
+          <AppText variant="h3" style={styles.total}>
+            {formatBdt(paisaToBdt(order.grandTotalPaisa), language)}
+          </AppText>
           {(order.workflowStatus || order.status) === "PENDING" ? (
-            <Pressable
-              style={[styles.cancelButton, busyId === order.id && styles.disabled]}
-              disabled={busyId === order.id}
+            <Button
+              title={busyId === order.id ? t("orders.cancelling") : t("orders.cancel")}
               onPress={() => handleCancel(order.id)}
-            >
-              <Text style={styles.cancelText}>{busyId === order.id ? t("orders.cancelling") : t("orders.cancel")}</Text>
-            </Pressable>
+              variant="dangerOutline"
+              size="sm"
+              loading={busyId === order.id}
+              style={styles.cancelButton}
+            />
           ) : null}
-        </View>
+        </Card>
       ))}
     </StackScreenShell>
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 14 },
-  refreshButton: { alignSelf: "flex-end", minHeight: 44, justifyContent: "center", paddingHorizontal: 16, borderRadius: 12, backgroundColor: colors.surfaceSoft, marginBottom: 12 },
-  refreshText: { color: colors.textPrimary, fontSize: 14, fontWeight: "700" },
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
-  orderNumber: { color: colors.textPrimary, fontSize: 16, fontWeight: "800", flex: 1 },
-  status: { color: colors.tabActive, fontSize: 12, fontWeight: "800" },
-  meta: { color: colors.textSecondary, fontSize: 13, marginTop: 8 },
-  pack: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, marginTop: 8 },
-  packTitle: { color: colors.textPrimary, fontSize: 12, fontWeight: "700" },
-  total: { color: colors.textPrimary, fontSize: 20, fontWeight: "800", marginTop: 10 },
-  cancelButton: { marginTop: 14, borderColor: colors.accent, borderWidth: 1, borderRadius: 12, paddingVertical: 10, alignItems: "center" },
-  cancelText: { color: colors.accent, fontSize: 14, fontWeight: "700" },
-  disabled: { opacity: 0.5 },
-  messageCard: { backgroundColor: colors.surface, borderRadius: 20, padding: 20, alignItems: "center" },
-  emptyText: { color: colors.textSecondary, fontSize: 15, textAlign: "center" },
-  errorText: { color: colors.accent, fontSize: 14, textAlign: "center", marginBottom: 12 },
-  retryButton: { backgroundColor: colors.tabActive, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 },
-  retryText: { color: colors.white, fontWeight: "700" },
-});
+const getStyles = (colors) =>
+  StyleSheet.create({
+    card: {
+      marginBottom: spacing.lg - 2,
+    },
+    refreshButton: {
+      alignSelf: "flex-end",
+      marginBottom: spacing.md,
+    },
+    row: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: spacing.md,
+    },
+    orderNumber: {
+      flex: 1,
+    },
+    status: {
+      fontWeight: "800",
+    },
+    meta: {
+      marginTop: spacing.sm,
+      fontWeight: "400",
+    },
+    pack: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: spacing.sm,
+      marginTop: spacing.sm,
+    },
+    packTitle: {
+      fontWeight: "700",
+    },
+    total: {
+      marginTop: spacing.sm + 2,
+    },
+    cancelButton: {
+      marginTop: spacing.lg - 2,
+    },
+    errorText: {
+      textAlign: "center",
+      marginBottom: spacing.md,
+    },
+  });

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, AppState, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, AppState, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { getLocalizedError } from "../i18n/errors";
 import { supabase } from "../config/supabase";
+import { radius, spacing, useStyles, useTheme } from "../theme";
+import { AppText, Button } from "../ui";
 
 import { TAB_KEYS } from "../data/tabs";
 import { PAYMENT_OPTIONS } from "../features/checkout/data/paymentOptions";
@@ -51,6 +53,8 @@ const DEFAULT_ADDRESS = {
 
 export default function MainTabs({ auth, onSignOut }) {
   const { t } = useTranslation();
+  const { colors } = useTheme();
+  const styles = useStyles(getStyles);
   const [activeTab, setActiveTab] = useState(TAB_KEYS.HOME);
   const [catalog, setCatalog] = useState({ categories: [] });
   const [storefront, setStorefront] = useState({ carouselSlides: [], activeFestivalDiscount: null });
@@ -431,52 +435,88 @@ export default function MainTabs({ auth, onSignOut }) {
       {currentRoute ? <View style={styles.stackOverlay}>{renderStackScreen()}</View> : null}
       {dataStatus === "loading" ? (
         <View style={styles.statusOverlay}>
-          <ActivityIndicator size="large" color="#ffffff" />
-          <Text style={styles.statusText}>{t("common.loading")}</Text>
+          <ActivityIndicator size="large" color={colors.brand} />
+          <AppText variant="body" tone="secondary" style={styles.statusText}>
+            {t("common.loading")}
+          </AppText>
         </View>
       ) : null}
       {dataStatus === "error" ? (
-        <View style={styles.statusOverlay}>
-          <Text style={styles.statusTitle}>{t("errors.storeUnavailable")}</Text>
-          <Text style={styles.statusText}>{dataError}</Text>
-          <Pressable style={styles.retryButton} onPress={loadStore}>
-            <Text style={styles.retryText}>{t("common.retry")}</Text>
-          </Pressable>
+        <View style={styles.statusOverlay} accessibilityLiveRegion="assertive">
+          <AppText variant="h2" style={styles.statusTitle}>
+            {t("errors.storeUnavailable")}
+          </AppText>
+          <AppText variant="body" tone="secondary" style={styles.statusText}>
+            {dataError}
+          </AppText>
+          <Button
+            title={t("common.retry")}
+            onPress={loadStore}
+            size="md"
+            fullWidth={false}
+            style={styles.retryButton}
+          />
         </View>
       ) : null}
-      {mutationError ? (
-        <View style={styles.errorBanner}><Text style={styles.errorBannerText}>{mutationError}</Text></View>
+      {mutationError && !currentRoute ? (
+        <View style={styles.errorBanner} accessibilityLiveRegion="assertive">
+          <AppText variant="bodySm" tone="onError" style={styles.errorBannerText}>
+            {mutationError}
+          </AppText>
+        </View>
       ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  activeScreen: {
-    flex: 1,
-  },
-  hiddenScreen: {
-    display: "none",
-  },
-  stackOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 10,
-  },
-  statusOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 30,
-    backgroundColor: "rgba(10,14,39,0.96)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 28,
-  },
-  statusTitle: { color: "#ffffff", fontSize: 24, fontWeight: "800", marginBottom: 10 },
-  statusText: { color: "#cbd5e1", fontSize: 15, textAlign: "center", marginTop: 12 },
-  retryButton: { marginTop: 22, backgroundColor: "#ffffff", borderRadius: 14, paddingHorizontal: 24, paddingVertical: 13 },
-  retryText: { color: "#0a0e27", fontSize: 15, fontWeight: "800" },
-  errorBanner: { position: "absolute", left: 16, right: 16, bottom: 88, zIndex: 25, backgroundColor: "#b91c1c", borderRadius: 14, padding: 12 },
-  errorBannerText: { color: "#ffffff", fontSize: 14, textAlign: "center", fontWeight: "600" },
-});
+// Previously a module-level StyleSheet with seven hardcoded colours, which meant the
+// loading and error overlays rendered dark-on-dark in light mode.
+const getStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    activeScreen: {
+      flex: 1,
+    },
+    hiddenScreen: {
+      display: "none",
+    },
+    stackOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 10,
+    },
+    statusOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 30,
+      backgroundColor: colors.background,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: spacing.xxxl,
+    },
+    statusTitle: {
+      marginBottom: spacing.sm + 2,
+      textAlign: "center",
+    },
+    statusText: {
+      textAlign: "center",
+      marginTop: spacing.md,
+    },
+    retryButton: {
+      marginTop: spacing.xxl - 2,
+    },
+    errorBanner: {
+      position: "absolute",
+      left: spacing.lg,
+      right: spacing.lg,
+      bottom: 88,
+      zIndex: 25,
+      backgroundColor: colors.error,
+      borderRadius: radius.sm,
+      padding: spacing.md,
+    },
+    errorBannerText: {
+      textAlign: "center",
+      fontWeight: "600",
+    },
+  });

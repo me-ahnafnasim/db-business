@@ -1,4 +1,4 @@
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -7,7 +7,8 @@ import CategoryFilterBar from "../features/catalog/components/CategoryFilterBar"
 import CatalogProductCard from "../features/catalog/components/CatalogProductCard";
 import { getCategoryById, getFilteredProducts } from "../features/catalog/utils/catalogSelectors";
 import { useResponsiveGrid } from "../hooks/useResponsiveGrid";
-import { useTheme } from "../theme/ThemeProvider";
+import { spacing, useStyles } from "../theme";
+import { AppText, EmptyState } from "../ui";
 
 const PAGE_SIZE = 14;
 
@@ -24,10 +25,9 @@ export default function CategoriesScreen({
   cartCount,
   auth,
 }) {
-  const { colors } = useTheme();
   const { t } = useTranslation();
   const grid = useResponsiveGrid();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
   const selectedCategory = getCategoryById(catalog.categories, selectedCategoryId);
   const products = useMemo(
     () => getFilteredProducts(catalog.categories, "", selectedCategoryId),
@@ -51,7 +51,15 @@ export default function CategoriesScreen({
     ({ item }) => <CatalogProductCard product={item} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />,
     [grid.cardWidth, onOpenProduct]
   );
-  const footer = products.length > visibleCount ? <Text style={styles.footerText}>{t("catalog.loadingMore")}</Text> : null;
+  const footer = products.length > visibleCount ? (
+    <AppText variant="bodySm" tone="secondary" style={styles.footerText}>
+      {t("catalog.loadingMore")}
+    </AppText>
+  ) : null;
+  const columnWrapper = useMemo(
+    () => (grid.columns > 1 ? [styles.row, { gap: grid.gap }] : undefined),
+    [grid.columns, grid.gap, styles.row]
+  );
 
   return (
     <ScreenShell
@@ -81,10 +89,10 @@ export default function CategoriesScreen({
           keyExtractor={(item, index) => item?.id ?? String(index)}
           key={`categories-${grid.columns}`}
           numColumns={grid.columns}
-          columnWrapperStyle={grid.columns > 1 ? [styles.row, { gap: grid.gap }] : undefined}
+          columnWrapperStyle={columnWrapper}
           contentContainerStyle={styles.list}
           renderItem={renderProduct}
-          ListEmptyComponent={<Text style={styles.emptyText}>{t("catalog.noProducts")}</Text>}
+          ListEmptyComponent={<EmptyState title={t("catalog.noProducts")} />}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={footer}
@@ -98,29 +106,21 @@ export default function CategoriesScreen({
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = () =>
   StyleSheet.create({
     content: {
       flex: 1,
     },
     list: {
-      paddingHorizontal: 20,
-      paddingBottom: 24,
+      paddingHorizontal: spacing.gutter,
+      paddingBottom: spacing.xxl,
     },
     row: {
       alignItems: "stretch",
     },
-    emptyText: {
-      color: colors.textSecondary,
-      textAlign: "center",
-      marginTop: 40,
-      fontSize: 16,
-    },
     footerText: {
-      color: colors.textSecondary,
       textAlign: "center",
-      marginTop: 8,
-      marginBottom: 6,
-      fontSize: 14,
+      marginTop: spacing.sm,
+      marginBottom: spacing.xs + 2,
     },
   });

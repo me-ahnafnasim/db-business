@@ -22,15 +22,37 @@ import { useLanguage } from "../i18n/LanguageProvider";
 const BRAND_TEXT = "NoboSole";
 const NOBO_COUNT = 4;
 
-const NOBO_COLORS = ["#ffd700", "#ffed4e", "#d4af37"];
-const SOLE_COLORS = ["#00d9ff", "#0099ff", "#0052cc"];
+// The launch screen is a fixed dark brand surface: it renders identically whichever theme
+// is active, so it deliberately does not consume the palette in src/theme. Every colour it
+// uses is collected here rather than scattered through the stylesheet below.
+const LAUNCH = {
+  backdrop: ["#0a0e27", "#1a1f3a", "#0f1729"],
+  nobo: ["#ffd700", "#ffed4e", "#d4af37"],
+  sole: ["#00d9ff", "#0099ff", "#0052cc"],
+  noboGlow: "rgba(255, 215, 0, 0.5)",
+  soleGlow: "rgba(0, 217, 255, 0.5)",
+  shoeGlow: "rgba(212, 175, 55, 0.4)",
+  textPrimary: "#e8e8e8",
+  textSecondary: "#b0bac9",
+  textMuted: "#64748b",
+  error: "#ef4444",
+  google: "#4285F4",
+  buttonFill: "rgba(212, 175, 55, 0.08)",
+  buttonBorder: "rgba(212, 175, 55, 0.3)",
+  buttonFillPressed: "rgba(212, 175, 55, 0.15)",
+  buttonBorderPressed: "rgba(212, 175, 55, 0.6)",
+  rule: "rgba(212, 175, 55, 0.2)",
+};
+
+const NOBO_COLORS = LAUNCH.nobo;
+const SOLE_COLORS = LAUNCH.sole;
 
 function SmokeChar({ char, index, isNobo, compact, reduceMotion }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-20)).current;
   const translateX = useRef(new Animated.Value(-30)).current;
   const color = isNobo ? NOBO_COLORS[index % NOBO_COLORS.length] : SOLE_COLORS[(index - NOBO_COUNT) % SOLE_COLORS.length];
-  const glowColor = isNobo ? "rgba(255, 215, 0, 0.5)" : "rgba(0, 217, 255, 0.5)";
+  const glowColor = isNobo ? LAUNCH.noboGlow : LAUNCH.soleGlow;
 
   useEffect(() => {
     if (reduceMotion) {
@@ -179,7 +201,13 @@ function AnimatedShoe({ compact, reduceMotion }) {
         },
       ]}
     >
-      <Text style={[styles.shoeEmoji, compact && styles.shoeEmojiCompact]}>👟</Text>
+      <Text
+        style={[styles.shoeEmoji, compact && styles.shoeEmojiCompact]}
+        accessibilityRole="image"
+        accessibilityLabel={BRAND_TEXT}
+      >
+        👟
+      </Text>
     </Animated.View>
   );
 }
@@ -253,7 +281,7 @@ export default function LaunchScreen({ onGoogleLogin, error, loading }) {
   }, [loginOpacity, reduceMotion]);
 
   return (
-    <LinearGradient colors={["#0a0e27", "#1a1f3a", "#0f1729"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
+    <LinearGradient colors={LAUNCH.backdrop} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
       <StatusBar style="light" />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
         <View style={styles.topBar}>
@@ -289,18 +317,28 @@ export default function LaunchScreen({ onGoogleLogin, error, loading }) {
             </View>
 
             <Pressable
-              style={({ pressed }) => [styles.premiumBtn, dynamicStyles.premiumBtn, pressed && styles.premiumBtnPressed]}
+              style={({ pressed }) => [
+                styles.premiumBtn,
+                dynamicStyles.premiumBtn,
+                pressed && styles.premiumBtnPressed,
+                loading && styles.premiumBtnDisabled,
+              ]}
               onPress={onGoogleLogin}
               disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel={t("launch.googleSignIn")}
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
-              <AntDesign name="google" size={24} color="#4285F4" />
+              <AntDesign name="google" size={24} color={LAUNCH.google} />
               <Text style={styles.btnText}>
                 {loading ? t("launch.signingIn") : t("launch.googleSignIn")}
               </Text>
             </Pressable>
 
             {error ? (
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorText} accessibilityLiveRegion="assertive">
+                {error}
+              </Text>
             ) : null}
           </Animated.View>
 
@@ -369,7 +407,7 @@ const styles = StyleSheet.create({
   shoeEmoji: {
     fontSize: 120,
     lineHeight: 130,
-    textShadowColor: "rgba(212, 175, 55, 0.4)",
+    textShadowColor: LAUNCH.shoeGlow,
     textShadowOffset: { width: 0, height: 15 },
     textShadowRadius: 20,
   },
@@ -398,7 +436,7 @@ const styles = StyleSheet.create({
   },
   brandSubtitle: {
     fontSize: 14,
-    color: "#e8e8e8",
+    color: LAUNCH.textPrimary,
     fontWeight: "700",
     letterSpacing: 2.5,
     marginTop: 8,
@@ -406,7 +444,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: 12,
-    color: "#b0bac9",
+    color: LAUNCH.textSecondary,
     textTransform: "uppercase",
     letterSpacing: 2,
     marginTop: 12,
@@ -433,20 +471,20 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "rgba(212, 175, 55, 0.2)",
+    backgroundColor: LAUNCH.rule,
   },
   dividerText: {
     paddingHorizontal: 16,
-    color: "#b0bac9",
+    color: LAUNCH.textSecondary,
     fontSize: 11,
     fontWeight: "600",
     letterSpacing: 1.8,
     textTransform: "uppercase",
   },
   premiumBtn: {
-    backgroundColor: "rgba(212, 175, 55, 0.08)",
+    backgroundColor: LAUNCH.buttonFill,
     borderWidth: 1.5,
-    borderColor: "rgba(212, 175, 55, 0.3)",
+    borderColor: LAUNCH.buttonBorder,
     borderRadius: 18,
     paddingVertical: 18,
     paddingHorizontal: 24,
@@ -457,13 +495,16 @@ const styles = StyleSheet.create({
     gap: 16,
     minHeight: 56,
   },
+  premiumBtnDisabled: {
+    opacity: 0.6,
+  },
   premiumBtnPressed: {
-    backgroundColor: "rgba(212, 175, 55, 0.15)",
-    borderColor: "rgba(212, 175, 55, 0.6)",
+    backgroundColor: LAUNCH.buttonFillPressed,
+    borderColor: LAUNCH.buttonBorderPressed,
     transform: [{ scale: 0.97 }],
   },
   btnText: {
-    color: "#e8e8e8",
+    color: LAUNCH.textPrimary,
     fontSize: 16,
     fontWeight: "600",
     letterSpacing: 0.5,
@@ -471,7 +512,7 @@ const styles = StyleSheet.create({
   footer: {
     marginTop: 48,
     fontSize: 10,
-    color: "#64748b",
+    color: LAUNCH.textMuted,
     letterSpacing: 0.8,
     textTransform: "uppercase",
     textAlign: "center",
@@ -480,7 +521,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   errorText: {
-    color: "#ef4444",
+    color: LAUNCH.error,
     fontSize: 13,
     textAlign: "center",
     marginTop: 12,

@@ -1,77 +1,71 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
-import { useTheme } from "../../../theme/ThemeProvider";
+import { spacing, useStyles, useTheme } from "../../../theme";
+import { AppText, IconButton, Input } from "../../../ui";
 
 export default function ProductConfigQuantityControl({ quantity, moq, onChange }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
 
   return (
     <View style={styles.section}>
-      <Text style={styles.title}>{t("catalog.quantity")}</Text>
+      <AppText variant="bodyStrong" style={styles.title}>
+        {t("catalog.quantity")}
+      </AppText>
       <View style={styles.row}>
-        <Pressable style={styles.stepButton} onPress={() => onChange?.(String(Math.max(1, quantity - 1)))}>
+        <IconButton
+          label={t("cart.decrease", { name: t("catalog.quantity") })}
+          onPress={() => onChange?.(String(Math.max(1, quantity - 1)))}
+          size="lg"
+          tone="bordered"
+        >
           <Feather name="minus" size={18} color={colors.textPrimary} />
-        </Pressable>
-        <TextInput
+        </IconButton>
+        <Input
           value={String(quantity)}
           onChangeText={(value) => onChange?.(value.replace(/[^0-9]/g, ""))}
           keyboardType="number-pad"
+          accessibilityLabel={t("catalog.quantity")}
           style={styles.input}
         />
-        <Pressable style={styles.stepButton} onPress={() => onChange?.(String(quantity + 1))}>
+        <IconButton
+          label={t("cart.increase", { name: t("catalog.quantity") })}
+          onPress={() => onChange?.(String(quantity + 1))}
+          size="lg"
+          tone="bordered"
+        >
           <Feather name="plus" size={18} color={colors.textPrimary} />
-        </Pressable>
+        </IconButton>
       </View>
-      <Text style={styles.helper}>{t("catalog.repeatPackHelp", { count: moq })}</Text>
+      <AppText variant="caption" tone="secondary" style={styles.helper}>
+        {t("catalog.repeatPackHelp", { count: moq })}
+      </AppText>
     </View>
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = () =>
   StyleSheet.create({
     section: {
-      marginBottom: 14,
+      marginBottom: spacing.lg - 2,
     },
     title: {
-      color: colors.textPrimary,
-      fontSize: 16,
-      fontWeight: "700",
-      marginBottom: 10,
+      marginBottom: spacing.sm + 2,
     },
     row: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 10,
-    },
-    stepButton: {
-      width: 42,
-      height: 42,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.surfaceSoft,
+      gap: spacing.sm + 2,
     },
     input: {
       flex: 1,
-      height: 42,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surfaceSoft,
-      color: colors.textPrimary,
       textAlign: "center",
-      fontSize: 16,
       fontWeight: "700",
     },
     helper: {
-      color: colors.textSecondary,
-      fontSize: 12,
-      marginTop: 8,
+      marginTop: spacing.sm,
     },
   });

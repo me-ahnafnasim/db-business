@@ -1,14 +1,15 @@
 import Feather from "@expo/vector-icons/Feather";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { getTimeGreeting } from "../../shared/utils/timeGreeting";
-import { useTheme } from "../../../theme/ThemeProvider";
+import { radius, spacing, useStyles, useTheme } from "../../../theme";
+import { AppText } from "../../../ui";
 
 export default function ProfileWelcomeCard({ auth }) {
-  const { colors, isDarkMode } = useTheme();
+  const { colors } = useTheme();
   const { t } = useTranslation();
-  const styles = getStyles(colors, isDarkMode);
+  const styles = useStyles(getStyles);
   const title = auth?.isSignedIn
     ? t("profile.welcomeUser", { name: auth.displayName })
     : t("profile.welcome");
@@ -19,26 +20,31 @@ export default function ProfileWelcomeCard({ auth }) {
   return (
     <View style={styles.card}>
       <View style={styles.iconWrap}>
-        <Feather name="user" size={28} color={colors.black} />
+        {/* Was colors.black on surfaceSoft — invisible in dark mode. */}
+        <Feather name="user" size={28} color={colors.textPrimary} />
       </View>
       <View style={styles.textWrap}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
+        <AppText variant="h2" style={styles.title}>
+          {title}
+        </AppText>
+        <AppText variant="body" tone="secondary" style={styles.subtitle}>
+          {subtitle}
+        </AppText>
       </View>
     </View>
   );
 }
 
-const getStyles = (colors, isDarkMode) =>
+const getStyles = (colors) =>
   StyleSheet.create({
     card: {
-      backgroundColor: isDarkMode ? "#ececec" : colors.surface,
-      borderRadius: 28,
+      backgroundColor: colors.surfaceSoft,
+      borderRadius: radius.card,
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 18,
-      paddingVertical: 20,
-      marginBottom: 18,
+      paddingHorizontal: spacing.lg + 2,
+      paddingVertical: spacing.xl,
+      marginBottom: spacing.lg + 2,
     },
     iconWrap: {
       width: 48,
@@ -46,21 +52,15 @@ const getStyles = (colors, isDarkMode) =>
       justifyContent: "center",
     },
     textWrap: {
-      marginLeft: 12,
+      marginLeft: spacing.md,
       flex: 1,
       flexShrink: 1,
     },
     title: {
-      color: colors.black,
-      fontSize: 24,
-      fontWeight: "700",
-      marginBottom: 4,
+      marginBottom: spacing.xs,
       flexShrink: 1,
     },
     subtitle: {
-      color: "#4b5563",
-      fontSize: 18,
-      fontWeight: "400",
       flexShrink: 1,
     },
   });

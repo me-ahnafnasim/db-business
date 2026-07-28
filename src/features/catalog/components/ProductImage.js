@@ -39,7 +39,7 @@ export default function ProductImage({
       ) : (
         <MaterialCommunityIcons name="shoe-sneaker" size={48} color={colors.muted} />
       )}
-      {loading ? <ActivityIndicator style={styles.loader} color={colors.tabActive} /> : null}
+      {loading ? <ActivityIndicator style={styles.loader} color={colors.brand} /> : null}
     </View>
   );
 }

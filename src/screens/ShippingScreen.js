@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import StackScreenShell from "../components/StackScreenShell";
@@ -8,7 +8,8 @@ import ShippingOptionCard from "../features/checkout/components/ShippingOptionCa
 import CheckoutSummaryCard from "../features/checkout/components/CheckoutSummaryCard";
 import { SHIPPING_OPTIONS } from "../features/checkout/data/shippingOptions";
 import { getCheckoutTotals } from "../features/checkout/utils/checkoutPricing";
-import { useTheme } from "../theme/ThemeProvider";
+import { spacing, useStyles } from "../theme";
+import { AppText, Button, SelectionCard } from "../ui";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { formatBdt } from "../utils/money";
 
@@ -25,10 +26,9 @@ export default function ShippingScreen({
   onAddressChange,
   onContinue,
 }) {
-  const { colors } = useTheme();
   const { language } = useLanguage();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
   const currentMethod = SHIPPING_OPTIONS.find((option) => option.id === shippingMethod) ?? null;
   const totals = useMemo(
     () => getCheckoutTotals({ cartItems, shippingCost: currentMethod?.price ?? 0, appliedCoupon }),
@@ -60,9 +60,12 @@ export default function ShippingScreen({
       subtitle={t("checkout.shippingSubtitle")}
       onBack={onBack}
       footer={
-        <Pressable style={[styles.button, !canContinue && styles.buttonDisabled]} disabled={!canContinue} onPress={onContinue}>
-          <Text style={styles.buttonText}>{t("checkout.continuePayment")}</Text>
-        </Pressable>
+        <Button
+          title={t("checkout.continuePayment")}
+          onPress={onContinue}
+          disabled={!canContinue}
+          size="lg"
+        />
       }
     >
       {SHIPPING_OPTIONS.map((option) => (
@@ -76,32 +79,48 @@ export default function ShippingScreen({
       {currentMethod?.requiresAddress ? (
         hasSaved ? (
           <>
-            <Pressable style={[styles.addressCard, !showNewAddress && styles.addressCardActive]} onPress={selectSaved}>
-              <View style={styles.radioRow}>
-                <View style={[styles.radio, !showNewAddress && styles.radioSelected]}>
-                  {!showNewAddress ? <View style={styles.radioDot} /> : null}
-                </View>
-                <Text style={styles.addressCardTitle}>{t("checkout.savedAddress")}</Text>
-              </View>
+            <SelectionCard
+              selected={!showNewAddress}
+              onPress={selectSaved}
+              title={t("checkout.savedAddress")}
+            >
               <View style={styles.addressDetails}>
-                <Text style={styles.addressName}>{savedAddress.customerName}</Text>
-                <Text style={styles.addressLine}>{savedAddress.phone}</Text>
-                <Text style={styles.addressLine}>{[savedAddress.thana, savedAddress.district, savedAddress.division].filter(Boolean).join(", ")}</Text>
-                {savedAddress.shopName ? <Text style={styles.addressLine}>{savedAddress.shopName}</Text> : null}
+                <AppText variant="bodyStrong">{savedAddress.customerName}</AppText>
+                <AppText variant="bodySm" tone="secondary">
+                  {savedAddress.phone}
+                </AppText>
+                <AppText variant="bodySm" tone="secondary">
+                  {[savedAddress.thana, savedAddress.district, savedAddress.division]
+                    .filter(Boolean)
+                    .join(", ")}
+                </AppText>
+                {savedAddress.shopName ? (
+                  <AppText variant="bodySm" tone="secondary">
+                    {savedAddress.shopName}
+                  </AppText>
+                ) : null}
               </View>
-            </Pressable>
-            <Pressable style={[styles.addressCard, showNewAddress && styles.addressCardActive]} onPress={selectNewAddress}>
-              <View style={styles.radioRow}>
-                <View style={[styles.radio, showNewAddress && styles.radioSelected]}>
-                  {showNewAddress ? <View style={styles.radioDot} /> : null}
-                </View>
-                <Text style={styles.addressCardTitle}>{t("checkout.newAddress")}</Text>
-              </View>
-              {showNewAddress ? <ShippingAddressForm value={shippingAddress} onChange={onAddressChange} phoneInvalid={!phoneValid} /> : null}
-            </Pressable>
+            </SelectionCard>
+            <SelectionCard
+              selected={showNewAddress}
+              onPress={selectNewAddress}
+              title={t("checkout.newAddress")}
+            >
+              {showNewAddress ? (
+                <ShippingAddressForm
+                  value={shippingAddress}
+                  onChange={onAddressChange}
+                  phoneInvalid={!phoneValid}
+                />
+              ) : null}
+            </SelectionCard>
           </>
         ) : (
-          <ShippingAddressForm value={shippingAddress} onChange={onAddressChange} phoneInvalid={!phoneValid} />
+          <ShippingAddressForm
+            value={shippingAddress}
+            onChange={onAddressChange}
+            phoneInvalid={!phoneValid}
+          />
         )
       ) : null}
       <CheckoutSummaryCard
@@ -116,76 +135,10 @@ export default function ShippingScreen({
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = () =>
   StyleSheet.create({
-    button: {
-      height: 50,
-      borderRadius: 16,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#d4af37",
-    },
-    buttonDisabled: {
-      opacity: 0.45,
-    },
-    buttonText: {
-      color: "#0a0e27",
-      fontSize: 16,
-      fontWeight: "700",
-    },
-    addressCard: {
-      backgroundColor: colors.surface,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 16,
-      marginTop: 8,
-    },
-    addressCardActive: {
-      borderColor: "#d4af37",
-    },
-    radioRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-    },
-    radio: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 2,
-      borderColor: colors.textSecondary,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    radioSelected: {
-      borderColor: "#d4af37",
-    },
-    radioDot: {
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-      backgroundColor: "#d4af37",
-    },
-    addressCardTitle: {
-      color: colors.textPrimary,
-      fontSize: 16,
-      fontWeight: "700",
-      flex: 1,
-    },
     addressDetails: {
-      marginTop: 10,
-      marginLeft: 32,
-    },
-    addressName: {
-      color: colors.textPrimary,
-      fontSize: 15,
-      fontWeight: "600",
-      marginBottom: 2,
-    },
-    addressLine: {
-      color: colors.textSecondary,
-      fontSize: 13,
-      marginBottom: 1,
+      marginTop: spacing.sm,
+      gap: spacing.xs / 2,
     },
   });

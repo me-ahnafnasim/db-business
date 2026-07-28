@@ -1,14 +1,16 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
-import { useTheme } from "../../../theme/ThemeProvider";
+import { radius, spacing, useStyles } from "../../../theme";
+import { AppText } from "../../../ui";
 
 export default function ProfileSectionTag({ label }) {
-  const { colors } = useTheme();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
 
   return (
     <View style={styles.tag}>
-      <Text style={styles.label}>{label}</Text>
+      <AppText variant="bodyStrong" accessibilityRole="header">
+        {label}
+      </AppText>
     </View>
   );
 }
@@ -18,14 +20,9 @@ const getStyles = (colors) =>
     tag: {
       alignSelf: "flex-start",
       backgroundColor: colors.surface,
-      borderRadius: 18,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      marginBottom: 14,
-    },
-    label: {
-      color: colors.textPrimary,
-      fontSize: 16,
-      fontWeight: "700",
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm + 2,
+      marginBottom: spacing.lg - 2,
     },
   });

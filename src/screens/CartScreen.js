@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import Feather from "@expo/vector-icons/Feather";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -6,7 +7,9 @@ import ScreenShell from "../components/ScreenShell";
 import CartLineItem from "../features/cart/components/CartLineItem";
 import CartSummaryPanel from "../features/cart/components/CartSummaryPanel";
 import { getCartSubtotal, getDiscountAmount } from "../features/checkout/utils/checkoutPricing";
-import { useTheme } from "../theme/ThemeProvider";
+import { TAB_KEYS } from "../data/tabs";
+import { spacing, useStyles, useTheme } from "../theme";
+import { AppText, EmptyState } from "../ui";
 
 export default function CartScreen({
   activeTab,
@@ -27,7 +30,7 @@ export default function CartScreen({
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
   const subtotal = useMemo(() => getCartSubtotal(cartItems), [cartItems]);
   const discount = useMemo(() => getDiscountAmount(subtotal, festivalCampaign), [festivalCampaign, subtotal]);
 
@@ -58,10 +61,21 @@ export default function CartScreen({
                   onRemove={() => onRemoveCartItem?.(item.lineId ?? item.id)}
                 />
               ))}
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+              {error ? (
+                <AppText variant="bodySm" tone="error" style={styles.errorText}>
+                  {error}
+                </AppText>
+              ) : null}
             </>
           ) : (
-            <Text style={styles.emptyText}>{t("cart.empty")}</Text>
+            <EmptyState
+              icon={<Feather name="shopping-bag" size={64} color={colors.textSecondary} />}
+              title={t("cart.emptyTitle")}
+              description={t("cart.emptySubtitle")}
+              actionLabel={t("cart.browseProducts")}
+              onAction={() => onTabPress?.(TAB_KEYS.HOME)}
+              style={styles.emptyState}
+            />
           )}
         </ScrollView>
 
@@ -71,7 +85,7 @@ export default function CartScreen({
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = () =>
   StyleSheet.create({
     content: {
       flex: 1,
@@ -81,19 +95,14 @@ const getStyles = (colors) =>
       flex: 1,
     },
     bodyContent: {
-      paddingHorizontal: 20,
-      paddingBottom: 16,
+      paddingHorizontal: spacing.gutter,
+      paddingBottom: spacing.lg,
     },
-    emptyText: {
-      color: colors.textSecondary,
-      textAlign: "center",
-      marginTop: 40,
-      fontSize: 16,
+    emptyState: {
+      paddingTop: spacing.x6 + spacing.x4,
     },
     errorText: {
-      color: colors.accent,
       textAlign: "center",
-      fontSize: 14,
-      marginBottom: 16,
+      marginBottom: spacing.lg,
     },
   });

@@ -1,9 +1,10 @@
 import Feather from "@expo/vector-icons/Feather";
 import { useMemo, useRef, useState } from "react";
-import { FlatList, Modal, Pressable, SafeAreaView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { FlatList, Modal, Pressable, SafeAreaView, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
-import { useTheme } from "../../../theme/ThemeProvider";
+import { radius, spacing, useStyles, useTheme } from "../../../theme";
+import { AppText, IconButton } from "../../../ui";
 import ProductImage from "./ProductImage";
 
 export default function ProductGallery({ productName, images = [], fallbackImage, initialIndex = 0, style }) {
@@ -15,7 +16,7 @@ export default function ProductGallery({ productName, images = [], fallbackImage
   const [viewerOpen, setViewerOpen] = useState(false);
   const listRef = useRef(null);
   const viewerRef = useRef(null);
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
 
   const galleryImages = useMemo(() => {
     if (images.length) return images;
@@ -43,7 +44,7 @@ export default function ProductGallery({ productName, images = [], fallbackImage
       <ProductImage
         uri={item.imageUrl}
         accessibilityLabel={item.altText || productName}
-        borderRadius={fullscreen ? 0 : 20}
+        borderRadius={fullscreen ? 0 : radius.card}
         style={fullscreen ? styles.fullscreenImage : undefined}
       />
     </Pressable>
@@ -66,7 +67,11 @@ export default function ProductGallery({ productName, images = [], fallbackImage
 
       {galleryImages.length > 1 ? (
         <>
-          <View style={styles.counter}><Text style={styles.counterText}>{activeIndex + 1}/{galleryImages.length}</Text></View>
+          <View style={styles.counter}>
+            <AppText variant="caption" style={styles.onScrim}>
+              {activeIndex + 1}/{galleryImages.length}
+            </AppText>
+          </View>
           <FlatList
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -76,11 +81,12 @@ export default function ProductGallery({ productName, images = [], fallbackImage
             renderItem={({ item, index }) => (
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel={t("catalog.imageOf", { current: index + 1, total: galleryImages.length, name: productName })}
                 accessibilityState={{ selected: index === activeIndex }}
                 onPress={() => selectImage(index)}
                 style={[styles.thumbnail, index === activeIndex && styles.thumbnailActive]}
               >
-                <ProductImage uri={item.imageUrl} accessibilityLabel={item.altText || productName} borderRadius={9} />
+                <ProductImage uri={item.imageUrl} accessibilityLabel={item.altText || productName} borderRadius={radius.xs} />
               </Pressable>
             )}
           />
@@ -90,10 +96,17 @@ export default function ProductGallery({ productName, images = [], fallbackImage
       <Modal visible={viewerOpen} animationType="fade" onRequestClose={() => setViewerOpen(false)}>
         <SafeAreaView style={styles.viewer}>
           <View style={styles.viewerHeader}>
-            <Text numberOfLines={1} style={styles.viewerTitle}>{t("catalog.galleryTitle", { name: productName })}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} style={styles.closeButton} onPress={() => setViewerOpen(false)}>
-              <Feather name="x" size={24} color="#ffffff" />
-            </Pressable>
+            <AppText numberOfLines={1} variant="h4" style={[styles.onScrim, styles.viewerTitle]}>
+              {t("catalog.galleryTitle", { name: productName })}
+            </AppText>
+            <IconButton
+              label={t("common.close")}
+              size="lg"
+              onPress={() => setViewerOpen(false)}
+              style={styles.closeButton}
+            >
+              <Feather name="x" size={24} color={colors.onScrim} />
+            </IconButton>
           </View>
           <FlatList
             ref={viewerRef}
@@ -107,89 +120,82 @@ export default function ProductGallery({ productName, images = [], fallbackImage
             onMomentumScrollEnd={(event) => setActiveIndex(Math.round(event.nativeEvent.contentOffset.x / windowWidth))}
             showsHorizontalScrollIndicator={false}
           />
-          <Text style={styles.viewerCounter}>{activeIndex + 1}/{galleryImages.length}</Text>
+          <AppText variant="bodyStrong" style={[styles.onScrim, styles.viewerCounter]}>
+            {activeIndex + 1}/{galleryImages.length}
+          </AppText>
         </SafeAreaView>
       </Modal>
     </View>
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
-  container: {
-    width: "100%",
-  },
-  page: {
-    padding: 4,
-  },
-  counter: {
-    position: "absolute",
-    top: 14,
-    right: 14,
-    borderRadius: 999,
-    backgroundColor: "rgba(10,14,39,0.74)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  counterText: {
-    color: "#ffffff",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  thumbnails: {
-    gap: 8,
-    paddingHorizontal: 4,
-    paddingTop: 10,
-    paddingBottom: 4,
-  },
-  thumbnail: {
-    width: 62,
-    height: 62,
-    padding: 3,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  thumbnailActive: {
-    borderColor: "#d4af37",
-  },
-  viewer: {
-    flex: 1,
-    backgroundColor: "#050814",
-  },
-  viewerHeader: {
-    minHeight: 58,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  viewerTitle: {
-    color: "#ffffff",
-    fontSize: 17,
-    fontWeight: "800",
-    flex: 1,
-  },
-  closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  fullscreenPage: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 12,
-  },
-  fullscreenImage: {
-    maxHeight: "85%",
-  },
-  viewerCounter: {
-    color: "#ffffff",
-    textAlign: "center",
-    paddingVertical: 16,
-    fontWeight: "800",
-  },
-});
+const getStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      width: "100%",
+    },
+    page: {
+      padding: spacing.xs,
+    },
+    // The lightbox keeps its own dark chrome in both themes — inverting it in light mode
+    // would wash out the photo it exists to show.
+    onScrim: {
+      color: colors.onScrim,
+    },
+    counter: {
+      position: "absolute",
+      top: spacing.lg - 2,
+      right: spacing.lg - 2,
+      borderRadius: radius.pill,
+      backgroundColor: colors.scrim,
+      paddingHorizontal: spacing.sm + 2,
+      paddingVertical: spacing.xs + 1,
+    },
+    thumbnails: {
+      gap: spacing.sm,
+      paddingHorizontal: spacing.xs,
+      paddingTop: spacing.sm + 2,
+      paddingBottom: spacing.xs,
+    },
+    thumbnail: {
+      width: 62,
+      height: 62,
+      padding: 3,
+      borderRadius: radius.sm,
+      borderWidth: 2,
+      borderColor: "transparent",
+    },
+    thumbnailActive: {
+      borderColor: colors.brand,
+    },
+    viewer: {
+      flex: 1,
+      backgroundColor: colors.viewerSurface,
+    },
+    viewerHeader: {
+      minHeight: 58,
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: spacing.lg,
+      gap: spacing.md,
+    },
+    viewerTitle: {
+      flex: 1,
+    },
+    closeButton: {
+      backgroundColor: colors.viewerControl,
+    },
+    fullscreenPage: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: spacing.md,
+    },
+    fullscreenImage: {
+      maxHeight: "85%",
+    },
+    viewerCounter: {
+      textAlign: "center",
+      paddingVertical: spacing.lg,
+    },
+  });

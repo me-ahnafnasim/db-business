@@ -1,72 +1,24 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { useLanguage } from "../../../i18n/LanguageProvider";
-import { useTheme } from "../../../theme/ThemeProvider";
+import { AppText, SelectionCard } from "../../../ui";
 import { formatBdt } from "../../../utils/money";
 
 export default function ShippingOptionCard({ option, selected, onPress }) {
-  const { colors, isDarkMode } = useTheme();
   const { language } = useLanguage();
   const { t } = useTranslation();
-  const styles = getStyles(colors, isDarkMode);
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        selected && styles.cardSelected,
-        pressed && styles.cardPressed,
-      ]}
+    <SelectionCard
+      selected={selected}
       onPress={onPress}
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-    >
-      <View>
-        <Text style={[styles.label, selected && styles.labelSelected]}>{t(option.labelKey)}</Text>
-        <Text style={styles.meta}>{t(option.descriptionKey)}</Text>
-      </View>
-      <Text style={[styles.price, selected && styles.labelSelected]}>{option.price ? formatBdt(option.price, language) : t("common.noCharge")}</Text>
-    </Pressable>
+      title={t(option.labelKey)}
+      description={t(option.descriptionKey)}
+      trailing={
+        <AppText variant="bodyStrong">
+          {option.price ? formatBdt(option.price, language) : t("common.noCharge")}
+        </AppText>
+      }
+    />
   );
 }
-
-const getStyles = (colors, isDarkMode) =>
-  StyleSheet.create({
-    card: {
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: 18,
-      padding: 16,
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: 12,
-    },
-    cardSelected: {
-      borderColor: isDarkMode ? colors.white : colors.tabActive,
-      backgroundColor: isDarkMode ? colors.surfaceSoft : colors.tabActiveBackground,
-    },
-    cardPressed: {
-      opacity: 0.9,
-    },
-    label: {
-      color: colors.textPrimary,
-      fontSize: 16,
-      fontWeight: "700",
-      marginBottom: 4,
-    },
-    labelSelected: {
-      color: isDarkMode ? colors.white : colors.tabActive,
-    },
-    meta: {
-      color: colors.textSecondary,
-      fontSize: 13,
-    },
-    price: {
-      color: colors.textPrimary,
-      fontSize: 15,
-      fontWeight: "700",
-    },
-  });

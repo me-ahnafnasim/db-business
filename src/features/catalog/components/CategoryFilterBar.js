@@ -1,77 +1,44 @@
-import { ScrollView, Pressable, StyleSheet, Text } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { useTranslation } from "react-i18next";
 
-import { useTheme } from "../../../theme/ThemeProvider";
+import { spacing, useStyles } from "../../../theme";
+import { Chip } from "../../../ui";
 
 export default function CategoryFilterBar({ categories, activeCategoryId, onSelectCategory }) {
-  const { colors } = useTheme();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.container}>
-      <Pressable
-        style={[styles.chip, !activeCategoryId && styles.activeChip]}
+      <Chip
+        label={t("catalog.all")}
+        selected={!activeCategoryId}
         onPress={() => onSelectCategory?.(null)}
-      >
-        <Text style={[styles.chipText, !activeCategoryId && styles.activeChipText]}>{t("catalog.all")}</Text>
-      </Pressable>
-      {categories.map((category) => {
-        const active = category.id === activeCategoryId;
-
-        return (
-          <Pressable
-            key={category.id}
-            style={[styles.chip, active && styles.activeChip]}
-            onPress={() => onSelectCategory?.(category.id)}
-          >
-            <Text
-              style={[styles.chipText, active && styles.activeChipText]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {category.nameKey ? t(category.nameKey) : category.name}
-            </Text>
-          </Pressable>
-        );
-      })}
+        style={styles.chip}
+      />
+      {categories.map((category) => (
+        <Chip
+          key={category.id}
+          label={category.nameKey ? t(category.nameKey) : category.name}
+          selected={category.id === activeCategoryId}
+          onPress={() => onSelectCategory?.(category.id)}
+          style={styles.chip}
+        />
+      ))}
     </ScrollView>
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = () =>
   StyleSheet.create({
     container: {
-      paddingHorizontal: 20,
-      paddingBottom: 14,
-      gap: 10,
+      paddingHorizontal: spacing.gutter,
+      paddingBottom: spacing.lg - 2,
+      gap: spacing.sm + 2,
     },
     chip: {
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.border,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderRadius: 18,
-      marginRight: 10,
       minWidth: 72,
       minHeight: 48,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    activeChip: {
-      backgroundColor: colors.tabActiveBackground,
-      borderColor: colors.tabActiveBackground,
-    },
-    chipText: {
-      color: colors.textSecondary,
-      fontSize: 14,
-      lineHeight: 20,
-      fontWeight: "600",
-      maxWidth: 150,
-      textAlign: "center",
-    },
-    activeChipText: {
-      color: colors.tabActive,
+      maxWidth: 180,
     },
   });

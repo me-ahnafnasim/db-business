@@ -1,12 +1,21 @@
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { useRef } from "react";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
-import { useTheme } from "../../../theme/ThemeProvider";
+import { spacing, useStyles } from "../../../theme";
+import { AppText, Card, FormField, Input } from "../../../ui";
 
 export default function ShippingAddressForm({ value, onChange, phoneInvalid }) {
-  const { colors } = useTheme();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
+
+  // Focus chain: the return key advances to the next field instead of dismissing the
+  // keyboard, so a six-field address can be filled without reaching back to the screen.
+  const phoneRef = useRef(null);
+  const divisionRef = useRef(null);
+  const districtRef = useRef(null);
+  const thanaRef = useRef(null);
+  const shopRef = useRef(null);
 
   const updateField = (field, fieldValue) => {
     onChange?.({
@@ -16,103 +25,100 @@ export default function ShippingAddressForm({ value, onChange, phoneInvalid }) {
   };
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>{t("checkout.addressTitle")}</Text>
-      <TextInput
-        value={value.customerName}
-        onChangeText={(text) => updateField("customerName", text)}
-        placeholder={t("checkout.customerName")}
-        placeholderTextColor={colors.textSecondary}
-        style={styles.input}
-      />
-      <TextInput
-        value={value.phone}
-        onChangeText={(text) => updateField("phone", text)}
-        placeholder={t("checkout.phone")}
-        placeholderTextColor={colors.textSecondary}
-        keyboardType="phone-pad"
-        style={[styles.input, phoneInvalid && styles.inputError]}
-      />
-      {phoneInvalid ? <Text style={styles.errorText}>{t("checkout.phoneInvalid")}</Text> : null}
-      <TextInput
-        value={value.division}
-        onChangeText={(text) => updateField("division", text)}
-        placeholder={t("checkout.division")}
-        placeholderTextColor={colors.textSecondary}
-        style={styles.input}
-      />
+    <Card style={styles.card}>
+      <AppText variant="h4" style={styles.title}>
+        {t("checkout.addressTitle")}
+      </AppText>
+      <FormField>
+        <Input
+          value={value.customerName}
+          onChangeText={(text) => updateField("customerName", text)}
+          placeholder={t("checkout.customerName")}
+          autoComplete="name"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => phoneRef.current?.focus()}
+        />
+      </FormField>
+      <FormField error={phoneInvalid ? t("checkout.phoneInvalid") : null}>
+        <Input
+          ref={phoneRef}
+          value={value.phone}
+          onChangeText={(text) => updateField("phone", text)}
+          placeholder={t("checkout.phone")}
+          keyboardType="phone-pad"
+          autoComplete="tel"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          error={phoneInvalid}
+          onSubmitEditing={() => divisionRef.current?.focus()}
+        />
+      </FormField>
+      <FormField>
+        <Input
+          ref={divisionRef}
+          value={value.division}
+          onChangeText={(text) => updateField("division", text)}
+          placeholder={t("checkout.division")}
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => districtRef.current?.focus()}
+        />
+      </FormField>
       <View style={styles.row}>
-        <TextInput
-          value={value.district}
-          onChangeText={(text) => updateField("district", text)}
-          placeholder={t("checkout.district")}
-          placeholderTextColor={colors.textSecondary}
-          style={[styles.input, styles.halfInput]}
-        />
-        <TextInput
-          value={value.thana}
-          onChangeText={(text) => updateField("thana", text)}
-          placeholder={t("checkout.thana")}
-          placeholderTextColor={colors.textSecondary}
-          style={[styles.input, styles.halfInput]}
-        />
+        <FormField style={styles.half}>
+          <Input
+            ref={districtRef}
+            value={value.district}
+            onChangeText={(text) => updateField("district", text)}
+            placeholder={t("checkout.district")}
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => thanaRef.current?.focus()}
+          />
+        </FormField>
+        <FormField style={styles.half}>
+          <Input
+            ref={thanaRef}
+            value={value.thana}
+            onChangeText={(text) => updateField("thana", text)}
+            placeholder={t("checkout.thana")}
+            returnKeyType="next"
+            blurOnSubmit={false}
+            onSubmitEditing={() => shopRef.current?.focus()}
+          />
+        </FormField>
       </View>
-      <TextInput
-        value={value.shopName}
-        onChangeText={(text) => updateField("shopName", text)}
-        placeholder={t("checkout.shopName")}
-        placeholderTextColor={colors.textSecondary}
-        style={[styles.input, styles.lastInput]}
-      />
-    </View>
+      <FormField style={styles.last}>
+        <Input
+          ref={shopRef}
+          value={value.shopName}
+          onChangeText={(text) => updateField("shopName", text)}
+          placeholder={t("checkout.shopName")}
+          returnKeyType="done"
+        />
+      </FormField>
+    </Card>
   );
 }
 
-const getStyles = (colors) =>
+const getStyles = () =>
   StyleSheet.create({
     card: {
-      backgroundColor: colors.surface,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: 16,
-      marginTop: 8,
+      marginTop: spacing.sm,
     },
     title: {
-      color: colors.textPrimary,
-      fontSize: 18,
-      fontWeight: "700",
-      marginBottom: 14,
-    },
-    input: {
-      height: 48,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surfaceSoft,
-      color: colors.textPrimary,
-      paddingHorizontal: 14,
-      fontSize: 15,
-      marginBottom: 12,
+      marginBottom: spacing.md,
     },
     row: {
       flexDirection: "row",
       justifyContent: "space-between",
-      gap: 12,
+      gap: spacing.md,
     },
-    halfInput: {
+    half: {
       flex: 1,
+    },
+    last: {
       marginBottom: 0,
-    },
-    lastInput: { marginTop: 12, marginBottom: 0 },
-    inputError: {
-      borderColor: "#ef4444",
-    },
-    errorText: {
-      color: "#ef4444",
-      fontSize: 12,
-      fontWeight: "600",
-      marginTop: -6,
-      marginBottom: 10,
     },
   });

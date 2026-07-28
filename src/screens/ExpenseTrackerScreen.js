@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import StackScreenShell from "../components/StackScreenShell";
@@ -7,7 +7,8 @@ import { getClientOrders } from "../services/api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { getLocalizedError } from "../i18n/errors";
 import { formatBdt, formatDate, paisaToBdt } from "../utils/money";
-import { useTheme } from "../theme/ThemeProvider";
+import { radius, spacing, useStyles, useTheme } from "../theme";
+import { AppText, AsyncStateView, Button, Card, SummaryRows } from "../ui";
 
 function computeSummary(orders) {
   return orders.reduce(
@@ -26,17 +27,17 @@ function paymentStatusLabel(paymentStatus, paidPaisa, grandTotalPaisa, t) {
   return t("status.unpaid");
 }
 
-function paymentStatusColor(paymentStatus, paidPaisa, grandTotalPaisa, colors) {
-  if (paymentStatus === "PAID") return colors.success;
-  if (paidPaisa > 0 && paidPaisa < grandTotalPaisa) return colors.warning;
-  return colors.accent;
+function paymentStatusTone(paymentStatus, paidPaisa, grandTotalPaisa) {
+  if (paymentStatus === "PAID") return "success";
+  if (paidPaisa > 0 && paidPaisa < grandTotalPaisa) return "warning";
+  return "error";
 }
 
 export default function ExpenseTrackerScreen({ onBack }) {
   const { colors } = useTheme();
   const { language } = useLanguage();
   const { t } = useTranslation();
-  const styles = getStyles(colors);
+  const styles = useStyles(getStyles);
   const [orders, setOrders] = useState([]);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
@@ -62,44 +63,49 @@ export default function ExpenseTrackerScreen({ onBack }) {
 
   return (
     <StackScreenShell title={t("expenseTracker.title")} subtitle={t("expenseTracker.subtitle")} onBack={onBack}>
-      <Pressable style={styles.refreshButton} onPress={loadOrders} accessibilityRole="button">
-        <Text style={styles.refreshText}>{t("common.refresh")}</Text>
-      </Pressable>
+      <Button
+        title={t("common.refresh")}
+        onPress={loadOrders}
+        variant="secondary"
+        size="sm"
+        fullWidth={false}
+        style={styles.refreshButton}
+      />
 
-      {status === "loading" ? <ActivityIndicator size="large" color={colors.tabActive} /> : null}
-      {status === "error" ? (
-        <View style={styles.messageCard}>
-          <Text style={styles.errorText}>{error}</Text>
-          <Pressable style={styles.retryButton} onPress={loadOrders}>
-            <Text style={styles.retryText}>{t("common.retry")}</Text>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {status === "ready" && !orders.length ? (
-        <View style={styles.messageCard}>
-          <Text style={styles.emptyText}>{t("orders.empty")}</Text>
-        </View>
-      ) : null}
+      <AsyncStateView
+        status={status}
+        error={error}
+        onRetry={loadOrders}
+        isEmpty={!orders.length}
+        emptyTitle={t("orders.empty")}
+      />
 
       {status === "ready" && orders.length > 0 ? (
         <>
           <View style={styles.summaryRow}>
-            <View style={[styles.summaryCard, { backgroundColor: colors.surfaceSoft }]}>
-              <Text style={styles.summaryValue}>{summary.totalOrders}</Text>
-              <Text style={styles.summaryLabel}>{t("expenseTracker.totalOrders")}</Text>
+            <View style={[styles.summaryCard, styles.summaryNeutral]}>
+              <AppText variant="h2" style={styles.summaryValue}>
+                {summary.totalOrders}
+              </AppText>
+              <AppText variant="micro" tone="secondary" style={styles.summaryLabel}>
+                {t("expenseTracker.totalOrders")}
+              </AppText>
             </View>
-            <View style={[styles.summaryCard, { backgroundColor: "#dcfce7" }]}>
-              <Text style={[styles.summaryValue, { color: "#166534" }]}>
+            <View style={[styles.summaryCard, { backgroundColor: colors.success + "22" }]}>
+              <AppText variant="h2" tone="success" style={styles.summaryValue}>
                 {formatBdt(paisaToBdt(summary.totalPaidPaisa), language)}
-              </Text>
-              <Text style={[styles.summaryLabel, { color: "#166534" }]}>{t("expenseTracker.totalPaid")}</Text>
+              </AppText>
+              <AppText variant="micro" tone="success" style={styles.summaryLabel}>
+                {t("expenseTracker.totalPaid")}
+              </AppText>
             </View>
-            <View style={[styles.summaryCard, { backgroundColor: "#fee2e2" }]}>
-              <Text style={[styles.summaryValue, { color: "#991b1b" }]}>
+            <View style={[styles.summaryCard, { backgroundColor: colors.error + "22" }]}>
+              <AppText variant="h2" tone="error" style={styles.summaryValue}>
                 {formatBdt(paisaToBdt(summary.totalDuePaisa), language)}
-              </Text>
-              <Text style={[styles.summaryLabel, { color: "#991b1b" }]}>{t("expenseTracker.totalDue")}</Text>
+              </AppText>
+              <AppText variant="micro" tone="error" style={styles.summaryLabel}>
+                {t("expenseTracker.totalDue")}
+              </AppText>
             </View>
           </View>
 
@@ -107,91 +113,142 @@ export default function ExpenseTrackerScreen({ onBack }) {
             const paid = Number(order.paidPaisa || 0);
             const due = Number(order.outstandingPaisa || 0);
             const grand = Number(order.grandTotalPaisa);
-            const statusColor = paymentStatusColor(order.paymentStatus, paid, grand, colors);
+            const statusTone = paymentStatusTone(order.paymentStatus, paid, grand);
             const statusLabel = paymentStatusLabel(order.paymentStatus, paid, grand, t);
 
             return (
-              <View key={String(order.id)} style={styles.orderCard}>
+              <Card key={String(order.id)} style={styles.orderCard}>
                 <View style={styles.orderHeader}>
-                  <Text style={styles.orderNumber}>{order.orderNumber}</Text>
-                  <Text style={styles.orderDate}>{formatDate(order.createdAt, language)}</Text>
+                  <AppText variant="bodyStrong">{order.orderNumber}</AppText>
+                  <AppText variant="caption" tone="secondary">
+                    {formatDate(order.createdAt, language)}
+                  </AppText>
                 </View>
-                <View style={styles.orderRow}>
-                  <Text style={styles.totalLabel}>{t("expenseTracker.total")}</Text>
-                  <Text style={styles.totalValue}>{formatBdt(paisaToBdt(grand), language)}</Text>
-                </View>
+                <SummaryRows
+                  rows={[
+                    { label: t("expenseTracker.total"), value: formatBdt(paisaToBdt(grand), language) },
+                  ]}
+                />
                 <View style={styles.balanceRow}>
                   <View style={styles.balanceItem}>
-                    <Text style={styles.balanceLabel}>{t("expenseTracker.paid")}</Text>
-                    <Text style={[styles.balanceValue, { color: "#166534" }]}>
+                    <AppText variant="micro" tone="secondary">
+                      {t("expenseTracker.paid")}
+                    </AppText>
+                    <AppText variant="bodySm" tone="success" style={styles.balanceValue}>
                       {formatBdt(paisaToBdt(paid), language)}
-                    </Text>
+                    </AppText>
                   </View>
                   <View style={styles.balanceDivider} />
                   <View style={styles.balanceItem}>
-                    <Text style={styles.balanceLabel}>{t("expenseTracker.due")}</Text>
-                    <Text style={[styles.balanceValue, { color: due > 0 ? "#991b1b" : "#166534" }]}>
+                    <AppText variant="micro" tone="secondary">
+                      {t("expenseTracker.due")}
+                    </AppText>
+                    <AppText
+                      variant="bodySm"
+                      tone={due > 0 ? "error" : "success"}
+                      style={styles.balanceValue}
+                    >
                       {formatBdt(paisaToBdt(due), language)}
-                    </Text>
+                    </AppText>
                   </View>
                   <View style={styles.balanceDivider} />
                   <View style={styles.balanceItem}>
-                    <Text style={[styles.balanceStatus, { color: statusColor }]}>{statusLabel}</Text>
+                    <AppText variant="label" tone={statusTone}>
+                      {statusLabel}
+                    </AppText>
                   </View>
                 </View>
-              </View>
+              </Card>
             );
           })}
 
-          <View style={styles.footerSummary}>
-            <View style={styles.footerRow}>
-              <Text style={styles.footerLabel}>{t("expenseTracker.totalPaid")}</Text>
-              <Text style={[styles.footerValue, { color: "#166534" }]}>
-                {formatBdt(paisaToBdt(summary.totalPaidPaisa), language)}
-              </Text>
-            </View>
-            <View style={styles.footerDivider} />
-            <View style={styles.footerRow}>
-              <Text style={styles.footerLabel}>{t("expenseTracker.totalDue")}</Text>
-              <Text style={[styles.footerValue, { color: "#991b1b" }]}>
-                {formatBdt(paisaToBdt(summary.totalDuePaisa), language)}
-              </Text>
-            </View>
-          </View>
+          <Card style={styles.footerSummary}>
+            <SummaryRows
+              rows={[
+                {
+                  label: t("expenseTracker.totalPaid"),
+                  value: (
+                    <AppText variant="h4" tone="success">
+                      {formatBdt(paisaToBdt(summary.totalPaidPaisa), language)}
+                    </AppText>
+                  ),
+                },
+                {
+                  label: t("expenseTracker.totalDue"),
+                  value: (
+                    <AppText variant="h4" tone="error">
+                      {formatBdt(paisaToBdt(summary.totalDuePaisa), language)}
+                    </AppText>
+                  ),
+                },
+              ]}
+            />
+          </Card>
         </>
       ) : null}
     </StackScreenShell>
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
-  refreshButton: { alignSelf: "flex-end", minHeight: 44, justifyContent: "center", paddingHorizontal: 16, borderRadius: 12, backgroundColor: colors.surfaceSoft, marginBottom: 12 },
-  refreshText: { color: colors.textPrimary, fontSize: 14, fontWeight: "700" },
-  summaryRow: { flexDirection: "row", gap: 10, marginBottom: 20 },
-  summaryCard: { flex: 1, borderRadius: 20, padding: 14, alignItems: "center" },
-  summaryValue: { color: colors.textPrimary, fontSize: 22, fontWeight: "900" },
-  summaryLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: "600", marginTop: 4, textTransform: "uppercase", letterSpacing: 0.5 },
-  orderCard: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 14 },
-  orderHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  orderNumber: { color: colors.textPrimary, fontSize: 15, fontWeight: "800" },
-  orderDate: { color: colors.textSecondary, fontSize: 12 },
-  orderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  totalLabel: { color: colors.textSecondary, fontSize: 14 },
-  totalValue: { color: colors.textPrimary, fontSize: 18, fontWeight: "800" },
-  balanceRow: { flexDirection: "row", alignItems: "center", paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border },
-  balanceItem: { flex: 1, alignItems: "center" },
-  balanceDivider: { width: 1, height: 28, backgroundColor: colors.border },
-  balanceLabel: { color: colors.textSecondary, fontSize: 11, fontWeight: "600" },
-  balanceValue: { fontSize: 14, fontWeight: "800", marginTop: 3 },
-  balanceStatus: { fontSize: 13, fontWeight: "700" },
-  footerSummary: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 20, padding: 16, marginTop: 4 },
-  footerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6 },
-  footerDivider: { height: 1, backgroundColor: colors.border, marginVertical: 6 },
-  footerLabel: { color: colors.textPrimary, fontSize: 15, fontWeight: "600" },
-  footerValue: { fontSize: 18, fontWeight: "900" },
-  messageCard: { backgroundColor: colors.surface, borderRadius: 20, padding: 20, alignItems: "center" },
-  emptyText: { color: colors.textSecondary, fontSize: 15, textAlign: "center" },
-  errorText: { color: colors.accent, fontSize: 14, textAlign: "center", marginBottom: 12 },
-  retryButton: { backgroundColor: colors.tabActive, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 10 },
-  retryText: { color: colors.white, fontWeight: "700" },
-});
+const getStyles = (colors) =>
+  StyleSheet.create({
+    refreshButton: {
+      alignSelf: "flex-end",
+      marginBottom: spacing.md,
+    },
+    summaryRow: {
+      flexDirection: "row",
+      gap: spacing.sm + 2,
+      marginBottom: spacing.xl,
+    },
+    summaryCard: {
+      flex: 1,
+      borderRadius: radius.card,
+      padding: spacing.lg - 2,
+      alignItems: "center",
+    },
+    summaryNeutral: {
+      backgroundColor: colors.surfaceSoft,
+    },
+    summaryValue: {
+      textAlign: "center",
+    },
+    summaryLabel: {
+      marginTop: spacing.xs,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      textAlign: "center",
+    },
+    orderCard: {
+      marginBottom: spacing.lg - 2,
+    },
+    orderHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: spacing.sm + 2,
+    },
+    balanceRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingTop: spacing.sm + 2,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    balanceItem: {
+      flex: 1,
+      alignItems: "center",
+    },
+    balanceDivider: {
+      width: 1,
+      height: 28,
+      backgroundColor: colors.border,
+    },
+    balanceValue: {
+      fontWeight: "800",
+      marginTop: 3,
+    },
+    footerSummary: {
+      marginTop: spacing.xs,
+    },
+  });
