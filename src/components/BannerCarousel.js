@@ -245,23 +245,32 @@ export default function BannerCarousel({ slides, active = true }) {
         scrollEventThrottle={16}
       />
 
-      <IconButton
-        label={t("common.previous")}
-        size="sm"
-        onPress={() => goToSlide(activeIndex - 1)}
-        style={[styles.arrowButton, styles.leftArrow, { top: 20 + slideHeight / 2 - 14 }]}
-      >
-        <Feather name="chevron-left" size={20} color={colors.white} />
-      </IconButton>
+      {/* Paired in the bottom-right rather than pinned to either edge at the vertical centre,
+          where they sat over the middle of the photograph — the most valuable part of it — and
+          split the controls across three separate places on the slide. Grouped here they read
+          as one control next to the dots, and the artwork is left alone.
 
-      <IconButton
-        label={t("common.next")}
-        size="sm"
-        onPress={() => goToSlide(activeIndex + 1)}
-        style={[styles.arrowButton, styles.rightArrow, { top: 20 + slideHeight / 2 - 14 }]}
-      >
-        <Feather name="chevron-right" size={20} color={colors.white} />
-      </IconButton>
+          The buttons keep size="sm", which is what gives them hitSlop.md; that puts the real
+          touch target back at 44dp even though the visible circle is 24. */}
+      <View style={styles.arrowGroup}>
+        <IconButton
+          label={t("common.previous")}
+          size="sm"
+          onPress={() => goToSlide(activeIndex - 1)}
+          style={styles.arrowButton}
+        >
+          <Feather name="chevron-left" size={16} color={colors.white} />
+        </IconButton>
+
+        <IconButton
+          label={t("common.next")}
+          size="sm"
+          onPress={() => goToSlide(activeIndex + 1)}
+          style={styles.arrowButton}
+        >
+          <Feather name="chevron-right" size={16} color={colors.white} />
+        </IconButton>
+      </View>
 
       <View style={styles.pagination}>
         {safeSlides.map((slide, index) => {
@@ -305,7 +314,7 @@ const getStyles = (colors) =>
     },
     banner: {
       flex: 1,
-      borderRadius: radius.xl,
+      borderRadius: radius.lg,
       overflow: "hidden",
     },
     gradient: {
@@ -351,17 +360,30 @@ const getStyles = (colors) =>
       fontWeight: "600",
       marginBottom: spacing.xs - 2,
     },
-    arrowButton: {
+    // Bottom-right, pulled in off the corner. The dots are centred and at most ~44 wide, these
+    // are ~54 at the right edge, so the two never meet even on a 320dp phone with five slides —
+    // ~32dp between them in that worst case.
+    //
+    // The banner is rounded to radius.lg (20), which puts a floor on how far into the corner
+    // these can go before they read as hanging off the curve. It is not reached here: at 20/8
+    // the circle clears the arc entirely.
+    arrowGroup: {
       position: "absolute",
-      backgroundColor: ARROW_BACKGROUND,
-      borderRadius: radius.pill,
+      right: spacing.xl,
+      bottom: spacing.sm,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
       zIndex: 2,
     },
-    leftArrow: {
-      left: spacing.xxxl,
-    },
-    rightArrow: {
-      right: spacing.xxxl,
+    arrowButton: {
+      // 24 rather than the 28 size_sm gives. Overriding here rather than adding a size to
+      // IconButton: this is one decorative control on one component, and the shrink is only
+      // safe because size="sm" keeps hitSlop.md around it.
+      width: 24,
+      height: 24,
+      backgroundColor: ARROW_BACKGROUND,
+      borderRadius: radius.pill,
     },
     pagination: {
       position: "absolute",
