@@ -34,6 +34,15 @@ export default function CartScreen({
   // Takes the items rather than the subtotal: lines already priced at a quantity tier are
   // excluded from the festival campaign, which a single summed figure cannot express.
   const discount = useMemo(() => getDiscountAmount(cartItems, festivalCampaign), [cartItems, festivalCampaign]);
+  // The same two rules place-order enforces, checked here so a buyer learns about a bad line
+  // while they can still fix it rather than after choosing a courier and a payment method.
+  // Both flags are already on every line: the server sets configurationValid per item and
+  // moqSatisfied from its per-product MOQ aggregate.
+  const blockedReason = useMemo(() => {
+    if (cartItems.some((item) => !item.configurationValid)) return t("cart.packInvalid");
+    if (cartItems.some((item) => !item.moqSatisfied)) return t("cart.moqNotMet");
+    return "";
+  }, [cartItems, t]);
 
   return (
     <ScreenShell
@@ -81,7 +90,12 @@ export default function CartScreen({
           )}
         </ScrollView>
 
-        <CartSummaryPanel subtotal={subtotal} discount={discount} onCheckout={() => onCheckout?.("")} />
+        <CartSummaryPanel
+          subtotal={subtotal}
+          discount={discount}
+          blockedReason={blockedReason}
+          onCheckout={() => onCheckout?.("")}
+        />
       </View>
     </ScreenShell>
   );
