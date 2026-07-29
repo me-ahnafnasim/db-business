@@ -30,8 +30,13 @@
     "tagline": "B2B Enterprise Solutions",
     "divider": "Secure Enterprise Access",
     "googleSignIn": "Sign in with Google",
+    "continueAsGuest": "Continue as Guest",
     "signingIn": "Signing in…",
     "footer": "© 2026 NoboSole Enterprise Inc. | B2B Solutions"
+  },
+  "guest": {
+    "signInRequiredTitle": "Dear Guest",
+    "signInRequiredMessage": "Sign in with Google to place an order. You can continue browsing without signing in."
   },
   "tabs": {
     "home": "Home",
@@ -111,7 +116,11 @@
     "galleryTitle": "{{name}} images",
     "viewGallery": "View Gallery",
     "gallery": "Gallery",
-    "photos": "{{count}} Photos"
+    "photos": "{{count}} Photos",
+    "nextTierHint": "Add {{count}} more dozen to pay {{price}} per dozen.",
+    "tierTitle": "Buy more, pay less",
+    "tierRow": "{{count}} dozen or more",
+    "tierApplied": "Applied"
   },
   "search": {
     "title": "Search",
@@ -184,7 +193,16 @@
     "shopName": "Shop name",
     "savedAddress": "Deliver to saved address",
     "newAddress": "Send to a new address",
-    "phoneInvalid": "Enter a valid phone number (01XXXXXXXXX)"
+    "phoneInvalid": "Enter a valid phone number (01XXXXXXXXX)",
+    "chooseCourier": "Choose a courier",
+    "chooseCourierSubtitle": "Then pick how fast you need it",
+    "chooseMethod": "Choose a delivery method",
+    "noCouriers": "No delivery options are available right now. Please try again shortly.",
+    "noMethods": "This courier has no delivery methods yet.",
+    "daysRange": "{{min}}-{{max}} business days",
+    "deliveryFree": "Free",
+    "daysExact": "{{value}} business days",
+    "daysOne": "{{value}} business day"
   },
   "confirmation": {
     "title": "Order Confirmation",
@@ -302,6 +320,7 @@
     "signedIn": "Signed in",
     "signInToAccess": "Sign in to access",
     "signInSubtitle": "Sign in to access all features",
+    "continueWithGoogle": "Continue with Google",
     "signIn": "Sign In",
     "signOut": "Sign Out",
     "logout": "Logout",
@@ -370,6 +389,7 @@
     "storeUnavailable": "Store unavailable",
     "loadStore": "Could not load products and cart.",
     "loadProduct": "Could not load this product's details.",
+    "catalogRefreshing": "Products are refreshing. Please wait a moment and try again.",
     "updateCart": "Could not update the cart.",
     "addProduct": "Could not add this product.",
     "placeOrder": "Could not place this order.",
@@ -377,6 +397,7 @@
     "network": "Cannot reach the server. Check your internet connection.",
     "timeout": "The server took too long to respond.",
     "invalidResponse": "The server sent a response the app could not read. Please try again.",
+    "guestCatalogUnavailable": "Sign in with Google to place an order.",
     "configuration": "This app build is missing required configuration.",
     "session": "Could not read your sign-in session.",
     "sessionExpired": "Your session has expired. Sign in again.",
@@ -396,7 +417,8 @@
     "googleToken": "Google did not return an ID token.",
     "googleConfiguration": "Google Sign-In configuration does not match this APK. Verify its package name, SHA-1, and OAuth client, then rebuild.",
     "playServices": "Google Play Services is unavailable. Use a Google Play emulator image or update Play Services.",
-    "signInProgress": "Google Sign-In is already in progress."
+    "signInProgress": "Google Sign-In is already in progress.",
+    "cancelWindowClosed": "This order can no longer be cancelled. Contact support for help."
   },
   "product_configurator": {
     "select_colors": "Select {{count}} color(s)",

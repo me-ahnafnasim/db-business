@@ -66,7 +66,7 @@ async function request(method, path, body = null, requestOptions = {}) {
   }
 
   const headers = { 'Content-Type': 'application/json' };
-  const accessToken = await getAccessToken();
+  const accessToken = requestOptions.auth === false ? null : await getAccessToken();
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
   const options = { method, headers };
@@ -136,6 +136,21 @@ async function request(method, path, body = null, requestOptions = {}) {
     }
 
     const requestId = data?.meta?.requestId || res.headers.get('x-request-id') || undefined;
+    const publicRouteMissing =
+      requestOptions.auth === false &&
+      res.status === 404 &&
+      data?.error?.code === 'NOT_FOUND' &&
+      data?.error?.message === 'Endpoint not found.';
+    if (publicRouteMissing) {
+      throw new ApiError(
+        'Guest browsing is temporarily unavailable while the app service is being updated.',
+        {
+          status: res.status,
+          code: 'GUEST_CATALOG_UNAVAILABLE',
+          requestId,
+        }
+      );
+    }
     const message = data?.error?.message || `Request failed (${res.status}).`;
     throw new ApiError(requestId ? `${message} (Request ID: ${requestId})` : message, {
       status: res.status,
@@ -198,15 +213,15 @@ export async function getUnions(thanaId) {
 // Products
 export async function getProducts(params = {}) {
   const query = new URLSearchParams(params).toString();
-  return request('GET', `/products?${query}`);
+  return request('GET', `/public/products?${query}`, null, { auth: false });
 }
 
 export async function getProduct(id) {
-  return request('GET', `/products/${id}`);
+  return request('GET', `/public/products/${id}`, null, { auth: false });
 }
 
 export async function getStorefront() {
-  return request('GET', '/storefront');
+  return request('GET', '/public/storefront', null, { auth: false });
 }
 
 // Cart

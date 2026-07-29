@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../../i18n/LanguageProvider";
 import { radius, spacing, useStyles } from "../../../theme";
 import { AppText, Button, Chip } from "../../../ui";
+import { formatBdt, paisaToBdt } from "../../../utils/money";
+import { nextTier, unitPriceForQuantity } from "../utils/pricing";
 import ProductConfigPairStepper from "./ProductConfigPairStepper";
 import ProductConfigPriceSummary from "./ProductConfigPriceSummary";
 import ProductConfigQuantityControl from "./ProductConfigQuantityControl";
@@ -161,7 +163,15 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
             ? t("catalog.packPairTotal", { count: totalPairs, required: pack })
             : "";
 
-  const price = product.price;
+  // The per-dozen price for the quantity currently dialled in, not the catalogue price. This
+  // is the only place in the app where a quantity and a price meet before checkout, so it is
+  // the only place a tier can change what the buyer sees.
+  //
+  // The quantity here is this pack alone. The server resolves the tier against the buyer's
+  // TOTAL dozens of the product across their whole cart, so an existing cart line can only
+  // make the real price lower than the figure shown here — never higher.
+  const { price } = unitPriceForQuantity(product, quantity);
+  const upcomingTier = nextTier(product.quantityPriceTiers, quantity);
   const totalPrice = price * quantity;
   const canSubmit = !error;
 
@@ -287,6 +297,19 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
           {error}
         </AppText>
       ) : null}
+      {/* One more dozen is often one tap away from a better rate, and a buyer cannot see that
+          from a price alone. Hidden once they are on the last tier. */}
+      {upcomingTier ? (
+        <AppText variant="caption" tone="brand" style={styles.tierHint}>
+          {t("catalog.nextTierHint", {
+            count: Number(upcomingTier.minQuantityDozen) - quantity,
+            price: formatBdt(paisaToBdt(Number(upcomingTier.pricePerDozenPaisa)), language),
+          })}
+        </AppText>
+      ) : null}
+      {/* originalBasePrice is the catalogue price either way — the summary strikes it through
+          only when the effective price is lower, which is true for a tier and for a festival
+          discount alike. */}
       <ProductConfigPriceSummary basePrice={price} originalBasePrice={product.originalPrice}
         sizeSurcharge={0} logoSurcharge={0} quantity={quantity} totalPrice={totalPrice} />
       <Button
@@ -346,6 +369,10 @@ const getStyles = (colors) => StyleSheet.create({
   },
   moqNote: {
     marginBottom: spacing.md,
+  },
+  tierHint: {
+    marginBottom: spacing.sm,
+    fontWeight: "700",
   },
   errorText: {
     marginBottom: spacing.lg - 2,

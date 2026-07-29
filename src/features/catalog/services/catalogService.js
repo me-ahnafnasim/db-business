@@ -1,5 +1,9 @@
 import { getProduct, getProducts } from "../../../services/api";
 import { paisaToBdt } from "../../../utils/money";
+import {
+  readProductDetailCache,
+  writeProductDetailCache,
+} from "./catalogCache";
 
 const FALLBACK_IMAGE = "https://placehold.co/600x420/png?text=NoboSole";
 
@@ -45,7 +49,13 @@ export function mapApiProduct(product, festivalCampaign = null) {
     images,
     price: paisaToBdt(pricePaisa),
     originalPrice: paisaToBdt(originalPricePaisa),
+    // Kept in paisa alongside the BDT floats because tier prices arrive in paisa and comparing
+    // them against a divided-by-100 float is how rounding bugs start.
+    originalPricePaisa,
     discountPercent: Number(festivalCampaign?.discountPercent || 0),
+    // Quantity price breaks: "from 5 dozen, ৳4,250 per dozen". Empty for most products. Only
+    // on the detail payload — the grid card shows a single price, so view=card omits them.
+    quantityPriceTiers: Array.isArray(product.quantityPriceTiers) ? product.quantityPriceTiers : [],
     moq: Number(product.minimumOrderDozen || 1),
     requiredColorsPerDozen: Number(product.requiredColorsPerDozen || 1),
     requiredSizesPerDozen: Number(product.requiredSizesPerDozen || 1),
@@ -120,14 +130,35 @@ export function mapApiProductCard(product, festivalCampaign = null) {
 // long as the entry lived — a campaign starting or ending mid-session would leave the details
 // screen quoting the old figure while the grid card behind it quoted the new one.
 const detailCache = new Map();
+let activeCatalogRevision = null;
+
+export function setCatalogCacheRevision(revision) {
+  const normalized = revision === null || revision === undefined ? null : String(revision);
+  if (activeCatalogRevision !== normalized) detailCache.clear();
+  activeCatalogRevision = normalized;
+}
+
+export function clearProductDetailMemoryCache() {
+  detailCache.clear();
+}
 
 export async function fetchProductDetail(id, festivalCampaign = null) {
   const key = String(id);
   let raw = detailCache.get(key);
   if (!raw) {
+    raw = await readProductDetailCache(key, activeCatalogRevision);
+    if (raw) detailCache.set(key, raw);
+  }
+  if (!raw) {
+    const requestedRevision = activeCatalogRevision;
     const response = await getProduct(key);
     raw = response.data;
-    detailCache.set(key, raw);
+    // A realtime invalidation can land while this request is in flight. Never put a response
+    // from the old revision back into the newly-cleared cache.
+    if (requestedRevision === activeCatalogRevision) {
+      detailCache.set(key, raw);
+      await writeProductDetailCache(key, requestedRevision, raw);
+    }
   }
   return mapApiProduct(raw, festivalCampaign);
 }
@@ -139,11 +170,6 @@ export async function fetchProductDetail(id, festivalCampaign = null) {
 // been deleted — the home rails are now editorial flags that already ride along on every
 // product in this response.
 export async function fetchCatalogRaw() {
-  // Every catalog (re)load invalidates the detail cache. loadStore is the only thing that
-  // calls this, and it runs on exactly the events that can have changed a product — cold
-  // start, catalog_revision, and foreground-after-stale — so no separate subscription is
-  // needed to keep the two in step.
-  detailCache.clear();
   const response = await getProducts({ page: 1, limit: 100, isActive: true, view: "card" });
   return { response };
 }

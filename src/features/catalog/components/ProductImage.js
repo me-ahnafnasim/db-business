@@ -1,6 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
-import { memo, useEffect, useState } from "react";
-import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useTheme } from "../../../theme/ThemeProvider";
 
@@ -25,13 +26,30 @@ function ProductImage({
   resizeMode = "cover",
 }) {
   const { colors } = useTheme();
-  const [loading, setLoading] = useState(Boolean(uri));
+  const loaderTimer = useRef(null);
+  const [showLoader, setShowLoader] = useState(false);
   const [failed, setFailed] = useState(!uri);
 
-  useEffect(() => {
-    setLoading(Boolean(uri));
-    setFailed(!uri);
+  const stopLoader = useCallback(() => {
+    clearTimeout(loaderTimer.current);
+    loaderTimer.current = null;
+    setShowLoader(false);
+  }, []);
+
+  const startLoader = useCallback(() => {
+    clearTimeout(loaderTimer.current);
+    setShowLoader(false);
+    if (!uri) return;
+    // Memory/disk cache hits normally display before this fires, so reopening the app no
+    // longer flashes a spinner over every product card.
+    loaderTimer.current = setTimeout(() => setShowLoader(true), 200);
   }, [uri]);
+
+  useEffect(() => {
+    setFailed(!uri);
+    startLoader();
+    return stopLoader;
+  }, [startLoader, stopLoader, uri]);
 
   return (
     <View style={[styles.frame, { backgroundColor: colors.surfaceSoft, borderRadius, aspectRatio }, style]}>
@@ -39,20 +57,24 @@ function ProductImage({
         <Image
           source={{ uri }}
           style={styles.image}
-          resizeMode={resizeMode}
+          contentFit={resizeMode}
+          cachePolicy="memory-disk"
+          recyclingKey={uri}
+          transition={120}
           accessible
           accessibilityLabel={accessibilityLabel}
-          onLoadStart={() => setLoading(true)}
-          onLoadEnd={() => setLoading(false)}
+          onLoadStart={startLoader}
+          onDisplay={stopLoader}
+          onLoad={stopLoader}
           onError={() => {
-            setLoading(false);
+            stopLoader();
             setFailed(true);
           }}
         />
       ) : (
         <Feather name="image" size={44} color={colors.muted} />
       )}
-      {loading ? <ActivityIndicator style={styles.loader} color={colors.brand} /> : null}
+      {showLoader ? <ActivityIndicator style={styles.loader} color={colors.brand} /> : null}
     </View>
   );
 }

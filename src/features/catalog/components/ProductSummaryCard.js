@@ -6,7 +6,7 @@ import { useLanguage } from "../../../i18n/LanguageProvider";
 import { getLocalizedProduct } from "../../../i18n/product";
 import { hitSlop, spacing, useStyles } from "../../../theme";
 import { AppText, Card } from "../../../ui";
-import { formatBdt } from "../../../utils/money";
+import { formatBdt, paisaToBdt } from "../../../utils/money";
 import ProductGallery from "./ProductGallery";
 import SaleBadge from "./SaleBadge";
 
@@ -72,12 +72,32 @@ export default function ProductSummaryCard({ product, onContactSupport }) {
         <AppText variant="label" tone="secondary" style={styles.moq}>
           {t("catalog.moq", { count: product.moq })}
         </AppText>
+        {/* The price ladder, when the admin set one. Shown here rather than on the grid card
+            because this is the screen where a buyer picks a quantity, and because equal card
+            heights across the grid are load-bearing there. */}
+        {product.quantityPriceTiers?.length ? (
+          <View style={styles.tiers}>
+            <AppText variant="label" style={styles.tiersTitle}>
+              {t("catalog.tierTitle")}
+            </AppText>
+            {product.quantityPriceTiers.map((tier) => (
+              <View key={String(tier.minQuantityDozen)} style={styles.tierRow}>
+                <AppText variant="bodySm" tone="secondary">
+                  {t("catalog.tierRow", { count: Number(tier.minQuantityDozen) })}
+                </AppText>
+                <AppText variant="bodySm" style={styles.tierPrice}>
+                  {formatBdt(paisaToBdt(Number(tier.pricePerDozenPaisa)), language)} {t("catalog.perDozen")}
+                </AppText>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </View>
     </Card>
   );
 }
 
-const getStyles = () =>
+const getStyles = (colors) =>
   StyleSheet.create({
     card: {
       overflow: "hidden",
@@ -123,5 +143,27 @@ const getStyles = () =>
     moq: {
       marginTop: spacing.xs + 1,
       fontWeight: "400",
+    },
+    tiers: {
+      marginTop: spacing.lg - 2,
+      paddingTop: spacing.sm + 2,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    tiersTitle: {
+      marginBottom: spacing.xs + 1,
+    },
+    tierRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      // Wraps rather than clipping: the Bangla row label is long and the price must stay
+      // readable at 320dp.
+      flexWrap: "wrap",
+      gap: spacing.sm,
+      paddingVertical: spacing.xs,
+    },
+    tierPrice: {
+      fontWeight: "700",
     },
   });

@@ -101,3 +101,14 @@ export const lightColors = {
   skeletonHighlight: "#f2f5f9",
   shadow: "#0f172a",
 };
+
+// Fixed palette for the branded storefront loader. It deliberately does not switch with
+// the app theme: this short loading state reproduces the supplied NoboSole artwork in both
+// modes, while keeping its literals inside the design-token layer.
+export const loaderColors = Object.freeze({
+  background: "#1a1a2e",
+  letterStart: "#ffdd4d",
+  letterEnd: "#ffcc00",
+  letterText: "#222222",
+  shadow: "#000000",
+});

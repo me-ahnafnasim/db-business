@@ -31,7 +31,9 @@ export default function CartScreen({
   const { t } = useTranslation();
   const styles = useStyles(getStyles);
   const subtotal = useMemo(() => getCartSubtotal(cartItems), [cartItems]);
-  const discount = useMemo(() => getDiscountAmount(subtotal, festivalCampaign), [festivalCampaign, subtotal]);
+  // Takes the items rather than the subtotal: lines already priced at a quantity tier are
+  // excluded from the festival campaign, which a single summed figure cannot express.
+  const discount = useMemo(() => getDiscountAmount(cartItems, festivalCampaign), [cartItems, festivalCampaign]);
 
   return (
     <ScreenShell

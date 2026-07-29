@@ -22,6 +22,7 @@ export default function ProfileScreen({
   onTabPress,
   cartCount,
   auth,
+  onSignIn,
   onSignOut,
   onOrdersPress,
   onExpenseTrackerPress,
@@ -101,7 +102,7 @@ export default function ProfileScreen({
           <LanguageToggle variant="light" />
         </View>
         <ProfileWelcomeCard auth={auth} />
-        <ProfileSignInCard auth={auth} onSignOut={onSignOut} />
+        <ProfileSignInCard auth={auth} onSignIn={onSignIn} onSignOut={onSignOut} />
         {auth?.role === "CLIENT" ? (
           <>
             <ProfileSingleRowCard icon="truck" labelKey="profile.trackOrder" onPress={onOrdersPress} />

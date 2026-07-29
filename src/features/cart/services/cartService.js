@@ -57,11 +57,24 @@ export function mapApiCart(cart, catalog, festivalCampaign = null) {
     const apiProduct = item.product;
     const catalogProduct = catalogProductFor(catalog, apiProduct.id);
 
-    const unitPricePaisa = Number(apiProduct.pricePerDozenPaisa);
-    const discountPercent = Number(festivalCampaign?.discountPercent || 0);
-    const discountedUnitPricePaisa = discountPercent > 0
-      ? Math.floor(unitPricePaisa * (100 - discountPercent) / 100)
-      : unitPricePaisa;
+    // `pricePerDozenPaisa` is now the EFFECTIVE price the server will charge for this line —
+    // it already carries any quantity tier, resolved against the buyer's total dozens of the
+    // product across the whole cart. `basePricePerDozenPaisa` is the catalogue price, kept for
+    // the struck-through original.
+    //
+    // The festival percent is applied here only when no tier did: one discount runs at a time,
+    // and a per-product tier is the one an admin set deliberately, so it wins. `appliedTier`
+    // comes from the server precisely so the client does not have to work that out.
+    const unitPricePaisa = Number(apiProduct.basePricePerDozenPaisa ?? apiProduct.pricePerDozenPaisa);
+    const tieredUnitPricePaisa = Number(apiProduct.pricePerDozenPaisa);
+    const campaignPercent = Number(festivalCampaign?.discountPercent || 0);
+    const tierApplied = Boolean(item.appliedTier);
+    const discountPercent = tierApplied ? 0 : campaignPercent;
+    const discountedUnitPricePaisa = tierApplied
+      ? tieredUnitPricePaisa
+      : (campaignPercent > 0
+        ? Math.floor(unitPricePaisa * (100 - campaignPercent) / 100)
+        : unitPricePaisa);
     return {
       id: String(item.id),
       lineId: String(item.id),
@@ -72,6 +85,8 @@ export function mapApiCart(cart, catalog, festivalCampaign = null) {
       unitPrice: paisaToBdt(unitPricePaisa),
       discountedUnitPrice: paisaToBdt(discountedUnitPricePaisa),
       discountPercent,
+      appliedTier: item.appliedTier || null,
+      nextTier: item.nextTier || null,
       quantity: item.quantityDozen,
       configurationValid: item.configurationValid !== false,
       allocations: (item.allocations || []).map((allocation) => ({

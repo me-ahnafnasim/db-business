@@ -1,11 +1,11 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { Image } from "expo-image";
 import Feather from "@expo/vector-icons/Feather";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
   FlatList,
-  ImageBackground,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -20,9 +20,20 @@ const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 // Scrims and gradient stops sit on top of photography, so they are fixed rather than
 // theme-derived: the text above them must stay legible whichever theme is active.
-const IMAGE_SCRIM = ["rgba(5, 9, 24, 0.12)", "rgba(5, 9, 24, 0.88)"];
+// Much lighter than it was: the top stop is now fully clear instead of a 0.12 haze laid over
+// the entire photograph, and the bottom lands at 0.58 rather than 0.88. Two stops exactly —
+// a third would be a new hardcoded colour and the token check counts those.
+//
+// The scrim still exists, and deliberately: the 12px subtitle is drawn at 58% white and would
+// disappear over a pale image without something behind it. What changed is where the darkness
+// sits — see the gradient's `start` below, which now begins the fade partway down so the upper
+// half of the image is untouched.
+const IMAGE_SCRIM = ["rgba(5, 9, 24, 0)", "rgba(5, 9, 24, 0.58)"];
 const FALLBACK_GRADIENT = ["#0a0e27", "#7c5d12"];
-const SUBTITLE_ON_IMAGE = "rgba(255, 255, 255, 0.8)";
+// Faint enough to read as a whisper over the photograph. The title is softened with `opacity`
+// in the stylesheet instead of a second rgba constant here, so it keeps the theme's inverse
+// colour and does not add another hardcoded colour for the token check to count.
+const SUBTITLE_ON_IMAGE = "rgba(255, 255, 255, 0.58)";
 const ICON_ON_IMAGE = "rgba(255, 255, 255, 0.9)";
 const ARROW_BACKGROUND = "rgba(0, 0, 0, 0.45)";
 const DOT_INACTIVE = "rgba(0, 0, 0, 0.28)";
@@ -125,12 +136,19 @@ export default function BannerCarousel({ slides, active = true }) {
       const content = (showIcon) => (
         <Animated.View style={[styles.bannerContent, { transform: [{ translateY }] }]}>
           {showIcon ? (
-            <Feather name="shopping-bag" size={38} color={ICON_ON_IMAGE} style={styles.bannerIcon} />
+            <Feather name="shopping-bag" size={26} color={ICON_ON_IMAGE} style={styles.bannerIcon} />
           ) : null}
-          <AppText variant="body" style={styles.bannerSubtitle}>
+          {/* Both capped, because slide text is admin-entered and the server allows a 180
+              character title and a 240 character subtitle. Uncapped, a long slide wraps to
+              eight or ten lines, grows upward out of the banner (the content is flex-end) and
+              is sliced mid-line by the banner's overflow:hidden — on a 320dp phone in Bangla
+              the stack reaches roughly three times the slide height. Two lines each fits every
+              device and locale with room to spare, and ellipsises rather than truncating
+              invisibly. */}
+          <AppText variant="caption" numberOfLines={2} style={styles.bannerSubtitle}>
             {item.subtitle}
           </AppText>
-          <AppText variant="display" tone="inverse" style={styles.bannerTitle}>
+          <AppText variant="h3" tone="inverse" numberOfLines={2} style={styles.bannerTitle}>
             {item.title}
           </AppText>
         </Animated.View>
@@ -140,11 +158,21 @@ export default function BannerCarousel({ slides, active = true }) {
         <View style={[styles.slide, { width: slideWidth, height: slideHeight }]}>
           <Animated.View style={[styles.banner, { opacity, transform: [{ scale }] }]}>
             {item.imageUrl ? (
-              <ImageBackground source={{ uri: item.imageUrl }} resizeMode="cover" style={styles.gradient}>
-                <LinearGradient colors={IMAGE_SCRIM} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={styles.gradient}>
+              <View style={styles.gradient}>
+                <Image
+                  source={{ uri: item.imageUrl }}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  recyclingKey={item.imageUrl}
+                  transition={120}
+                  style={styles.backgroundImage}
+                />
+                {/* Starts at 0.35 rather than the top, so the fade is confined to the lower
+                    two-thirds and the photograph reads clean above it. */}
+                <LinearGradient colors={IMAGE_SCRIM} start={{ x: 0.5, y: 0.35 }} end={{ x: 0.5, y: 1 }} style={styles.gradient}>
                   {content(false)}
                 </LinearGradient>
-              </ImageBackground>
+              </View>
             ) : (
               <LinearGradient colors={item.colors || FALLBACK_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
                 {content(true)}
@@ -198,7 +226,7 @@ export default function BannerCarousel({ slides, active = true }) {
           const inputRange = [index - 1, index, index + 1];
           const widthAnim = dotProgress.interpolate({
             inputRange,
-            outputRange: [18, 58, 18],
+            outputRange: [6, 20, 6],
             extrapolate: "clamp",
           });
           const opacityAnim = dotProgress.interpolate({
@@ -241,21 +269,38 @@ const getStyles = (colors) =>
     gradient: {
       flex: 1,
     },
+    backgroundImage: {
+      ...StyleSheet.absoluteFillObject,
+    },
     bannerContent: {
       flex: 1,
       justifyContent: "flex-end",
-      paddingHorizontal: spacing.xxl + 2,
-      paddingBottom: spacing.x5 - 2,
+      // 26 each side cost 19% of the usable width on a 320dp phone, which is where the Bangla
+      // strings wrap worst. 20 matches the screen gutter used everywhere else.
+      paddingHorizontal: spacing.xl,
+      // Sits lower than it did. The floor is not arbitrary: the pagination dots are absolutely
+      // positioned 12 from the slide bottom and are 18 tall, so they occupy 12–30. This
+      // padding plus the title's own marginBottom keeps the text clear of that band — drop
+      // either further and a long title runs under the dots.
+      paddingBottom: spacing.x4,
     },
     bannerSubtitle: {
       color: SUBTITLE_ON_IMAGE,
-      marginBottom: spacing.xs + 2,
+      marginBottom: spacing.xs,
+      // Loosened because the caption is now small and faint; tight tracking at 12px over a
+      // photograph reads as noise.
+      letterSpacing: 0.3,
     },
     bannerIcon: {
-      marginBottom: spacing.sm,
+      marginBottom: spacing.xs + 2,
     },
     bannerTitle: {
-      marginBottom: spacing.sm + 2,
+      // 600 rather than the h3 default of 700. The softening is done with weight and size, not
+      // opacity: the opacity scale has no step between muted (0.7) and solid, and 0.7 is too
+      // faint for a 20px title sitting over a photograph. Adding a token for one banner would
+      // be worse than not having one.
+      fontWeight: "600",
+      marginBottom: spacing.xs,
     },
     arrowButton: {
       position: "absolute",
@@ -271,15 +316,21 @@ const getStyles = (colors) =>
     },
     pagination: {
       position: "absolute",
-      bottom: spacing.gutter,
+      // Moved down with the text so the whole overlay group sits lower together, and so the
+      // caption/title have room to drop without colliding with the dots.
+      bottom: spacing.md,
       alignSelf: "center",
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.lg - 2,
+      // Tightened with the dots: a 14 gap between 6px dots leaves them floating apart.
+      gap: spacing.xs + 2,
     },
     paginationDot: {
-      height: 18,
-      borderRadius: 9,
+      // Was 18 tall with a 58-wide active pill, which read as a control rather than an
+      // indicator. radius.pill instead of a hand-computed half-height, so the shape stays
+      // correct if the height is ever tuned again.
+      height: 6,
+      borderRadius: radius.pill,
       backgroundColor: DOT_INACTIVE,
     },
     paginationDotActive: {

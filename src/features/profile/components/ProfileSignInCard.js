@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { radius, spacing, useStyles } from "../../../theme";
 import { AppText, Button } from "../../../ui";
 
-export default function ProfileSignInCard({ auth, onSignOut }) {
+export default function ProfileSignInCard({ auth, onSignIn, onSignOut }) {
   const { t } = useTranslation();
   const styles = useStyles(getStyles);
   const isSignedIn = auth?.isSignedIn;
@@ -20,7 +20,9 @@ export default function ProfileSignInCard({ auth, onSignOut }) {
       {isSignedIn ? (
         // Was a white button on a white card — invisible in light mode.
         <Button title={t("profile.logout")} onPress={onSignOut} variant="secondary" size="lg" />
-      ) : null}
+      ) : (
+        <Button title={t("profile.continueWithGoogle")} onPress={onSignIn} size="lg" />
+      )}
     </View>
   );
 }

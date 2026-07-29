@@ -25,6 +25,7 @@ import LanguageToggle from "../components/LanguageToggle";
 import { useBackHandler } from "../hooks/useBackHandler";
 import { useExitConfirm } from "../hooks/useExitConfirm";
 import { useLanguage } from "../i18n/LanguageProvider";
+import { radius, spacing } from "../theme";
 
 const BRAND_TEXT = "NoboSole";
 const NOBO_COUNT = 4;
@@ -256,7 +257,7 @@ function FadeSlideIn({ children, delay, style, reduceMotion }) {
   );
 }
 
-export default function LaunchScreen({ onGoogleLogin, error, loading }) {
+export default function LaunchScreen({ onGoogleLogin, onContinueAsGuest, error, loading }) {
   const loginOpacity = useRef(new Animated.Value(0)).current;
   const [reduceMotion, setReduceMotion] = useState(false);
   const { t } = useTranslation();
@@ -345,6 +346,23 @@ export default function LaunchScreen({ onGoogleLogin, error, loading }) {
                 {loading ? t("launch.signingIn") : t("launch.googleSignIn")}
               </Text>
             </Pressable>
+
+            {onContinueAsGuest ? (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.guestBtn,
+                  pressed && styles.guestBtnPressed,
+                  loading && styles.premiumBtnDisabled,
+                ]}
+                onPress={onContinueAsGuest}
+                disabled={loading}
+                accessibilityRole="button"
+                accessibilityLabel={t("launch.continueAsGuest")}
+                accessibilityState={{ disabled: loading }}
+              >
+                <Text style={styles.btnText}>{t("launch.continueAsGuest")}</Text>
+              </Pressable>
+            ) : null}
 
             {error ? (
               <Text style={styles.errorText} accessibilityLiveRegion="assertive">
@@ -513,6 +531,20 @@ const styles = StyleSheet.create({
     backgroundColor: LAUNCH.buttonFillPressed,
     borderColor: LAUNCH.buttonBorderPressed,
     transform: [{ scale: 0.97 }],
+  },
+  guestBtn: {
+    minHeight: 52,
+    marginTop: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: LAUNCH.buttonBorder,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: spacing.xl,
+  },
+  guestBtnPressed: {
+    backgroundColor: LAUNCH.buttonFillPressed,
+    borderColor: LAUNCH.buttonBorderPressed,
   },
   btnText: {
     color: LAUNCH.textPrimary,

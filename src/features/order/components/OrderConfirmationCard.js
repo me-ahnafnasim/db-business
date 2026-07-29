@@ -47,9 +47,9 @@ export default function OrderConfirmationCard({ order, onTrackOrder, onContinueS
       ))}
       <SummaryRows
         rows={[
-          { label: t("confirmation.shipping"), value: t(order.shippingMethodKey || "checkout.pickup") },
+          { label: t("confirmation.shipping"), value: order.shippingMethodLabel || "" },
           { label: t("confirmation.payment"), value: t(order.paymentMethodKey || "status.unpaid") },
-          { label: t("confirmation.delivery"), value: t(order.etaKey || "checkout.pickupDescription") },
+          { label: t("confirmation.delivery"), value: order.etaLabel || "" },
         ]}
         total={{ label: t("confirmation.total"), value: formatBdt(order.total, language) }}
         style={styles.totals}

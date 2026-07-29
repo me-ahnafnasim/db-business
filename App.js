@@ -14,7 +14,7 @@ import { ThemeProvider } from "./src/theme/ThemeProvider";
 import ErrorBoundary from "./src/ui/ErrorBoundary";
 
 function AppContent() {
-  const { status, user, error, signIn, signOut, completeProfile } = useAuth();
+  const { status, user, error, signIn, enterGuest, signOut, completeProfile } = useAuth();
 
   if (
     status === AUTH_STATUS.RESTORING ||
@@ -30,6 +30,7 @@ function AppContent() {
     return (
       <LaunchScreen
         onGoogleLogin={signIn}
+        onContinueAsGuest={enterGuest}
         error={error}
         loading={status === AUTH_STATUS.SIGNING_IN}
       />
@@ -40,7 +41,22 @@ function AppContent() {
     return <ProfileCompletionScreen auth={user} onComplete={completeProfile} />;
   }
 
-  return <MainTabs auth={user} onSignOut={signOut} />;
+  const guestAuth = {
+    isSignedIn: false,
+    isGuest: true,
+    role: "GUEST",
+    displayName: "Guest",
+  };
+  const auth = status === AUTH_STATUS.GUEST ? guestAuth : user;
+  const identityKey = auth?.isGuest ? "guest" : `client:${auth?.authUserId || "unknown"}`;
+  return (
+    <MainTabs
+      key={identityKey}
+      auth={auth}
+      onSignIn={signIn}
+      onSignOut={signOut}
+    />
+  );
 }
 
 export default function App() {

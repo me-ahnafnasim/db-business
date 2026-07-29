@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
@@ -7,6 +7,7 @@ import { spacing, useStyles } from "../../../theme";
 import { AppText, Button, Card } from "../../../ui";
 import { formatBdt, formatDate, paisaToBdt } from "../../../utils/money";
 import AllocationLine from "./AllocationLine";
+import { canCancelOrder, msUntilCancelWindowCloses } from "../utils/cancelWindow";
 
 // One order in the history list.
 //
@@ -19,6 +20,22 @@ function OrderHistoryCard({ order, busy, onCancel, onContactSupport }) {
   const { t } = useTranslation();
   const styles = useStyles(getStyles);
   const workflowStatus = order.workflowStatus || order.status;
+
+  // Recomputed on mount and again the moment the window closes, so a buyer watching the screen
+  // sees the button go rather than finding it still there and getting a rejection when they
+  // press it. One timeout scheduled at the exact expiry, not a per-second tick — this list is
+  // usually idle and can hold fifty cards.
+  const [cancellable, setCancellable] = useState(() => canCancelOrder(order));
+
+  useEffect(() => {
+    setCancellable(canCancelOrder(order));
+    const remaining = msUntilCancelWindowCloses(order);
+    if (remaining === null) return undefined;
+
+    // setTimeout clamps above ~24.8 days; the window is 90 minutes, so this is always safe.
+    const timer = setTimeout(() => setCancellable(false), remaining);
+    return () => clearTimeout(timer);
+  }, [order]);
 
   return (
     <Card style={styles.card}>
@@ -52,7 +69,7 @@ function OrderHistoryCard({ order, busy, onCancel, onContactSupport }) {
         {formatBdt(paisaToBdt(order.grandTotalPaisa), language)}
       </AppText>
       <View style={styles.actions}>
-        {workflowStatus === "PENDING" ? (
+        {cancellable ? (
           <Button
             title={busy ? t("orders.cancelling") : t("orders.cancel")}
             onPress={() => onCancel?.(order.id)}

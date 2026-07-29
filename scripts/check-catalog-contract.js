@@ -81,10 +81,26 @@ const apiStub = {
   },
 };
 
-const catalogService = loadModule(
-  'src/features/catalog/services/catalogService.js',
-  { '../../../services/api': apiStub }
-);
+// catalogCache is the on-device persistence layer — it imports AsyncStorage and the Supabase
+// client, neither of which loads outside React Native. Stubbed to a permanent miss so this
+// check always exercises the network path and the mappers, which is what it exists to verify.
+// Cache behaviour is a separate concern and is not what a contract check should be asserting.
+const cacheStub = {
+  readProductDetailCache: async () => null,
+  writeProductDetailCache: () => {},
+  getCurrentCatalogRevision: async () => null,
+  readCatalogSnapshot: async () => null,
+  writeCatalogSnapshot: async () => {},
+  clearCatalogDataCache: async () => {},
+  catalogCachePolicy: Object.freeze({}),
+};
+
+const moduleStubs = {
+  '../../../services/api': apiStub,
+  './catalogCache': cacheStub,
+};
+
+const catalogService = loadModule('src/features/catalog/services/catalogService.js', moduleStubs);
 
 const FESTIVAL = { discountPercent: 20 };
 
@@ -203,6 +219,7 @@ async function run() {
   const spyService = loadModule(
     'src/features/catalog/services/catalogService.js',
     {
+      ...moduleStubs,
       '../../../services/api': {
         ...apiStub,
         getProducts: async (params) => { requestedParams = params; return cardList; },

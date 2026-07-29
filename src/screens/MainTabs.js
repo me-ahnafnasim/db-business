@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, AppState, Linking, StyleSheet, View } from "react-native";
+import { Alert, AppState, Linking, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { getLocalizedError } from "../i18n/errors";
 import { supabase } from "../config/supabase";
@@ -9,11 +9,26 @@ import { useExitConfirm } from "../hooks/useExitConfirm";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import OfflineBanner from "../components/OfflineBanner";
 import { AppText, Button } from "../ui";
+import NoboSoleLoader from "../ui/NoboSoleLoader";
 
 import { TAB_KEYS } from "../data/tabs";
 import { PAYMENT_OPTIONS } from "../features/checkout/data/paymentOptions";
-import { SHIPPING_OPTIONS } from "../features/checkout/data/shippingOptions";
-import { buildCatalog, fetchCatalogRaw } from "../features/catalog/services/catalogService";
+import { findMethod, formatDeliveryDays, localizedName, methodPriceBdt } from "../features/checkout/utils/deliveryOptions";
+import {
+  buildCatalog,
+  fetchCatalogRaw,
+  setCatalogCacheRevision,
+} from "../features/catalog/services/catalogService";
+import {
+  clearCatalogDataCache,
+  getCurrentCatalogRevision,
+  readCatalogSnapshot,
+  writeCatalogSnapshot,
+} from "../features/catalog/services/catalogCache";
+import {
+  maintainImageDiskCache,
+  prefetchImages,
+} from "../features/catalog/services/imageCache";
 import {
   addConfiguredItem,
   catalogProductFor,
@@ -58,6 +73,14 @@ const STALE_AFTER_MS = 60_000;
 // How long the app must actually have been backgrounded before returning counts as a
 // return. Filters out the notification shade, permission dialogs and the sign-in bounce.
 const MIN_BACKGROUND_MS = 5_000;
+const REVISION_DEBOUNCE_MS = 300;
+const EMPTY_STOREFRONT = {
+  carouselSlides: [],
+  activeFestivalDiscount: null,
+  // Couriers and their delivery methods are admin-managed. Empty means checkout has nothing to
+  // offer, which ShippingScreen surfaces rather than falling back to a hardcoded list.
+  couriers: [],
+};
 
 const DEFAULT_ADDRESS = {
   customerName: "",
@@ -68,7 +91,34 @@ const DEFAULT_ADDRESS = {
   shopName: "",
 };
 
-export default function MainTabs({ auth, onSignOut }) {
+function storefrontForNow(value) {
+  const next = value || EMPTY_STOREFRONT;
+  const campaign = next.activeFestivalDiscount;
+  if (!campaign) return next;
+
+  const now = Date.now();
+  const startsAt = new Date(campaign.startsAt).getTime();
+  const endsAt = new Date(campaign.endsAt).getTime();
+  if (Number.isFinite(startsAt) && Number.isFinite(endsAt) && startsAt <= now && endsAt > now) {
+    return next;
+  }
+  return { ...next, activeFestivalDiscount: null };
+}
+
+function prefetchVisibleStoreImages(catalog, storefront) {
+  const products = [
+    ...(catalog.featuredProducts || []),
+    ...(catalog.newArrivals || []),
+    ...(catalog.popularProducts || []),
+  ];
+  const urls = [
+    storefront.carouselSlides?.[0]?.imageUrl,
+    ...products.slice(0, 8).map((product) => product.image),
+  ];
+  void prefetchImages(urls).catch(() => {});
+}
+
+export default function MainTabs({ auth, onSignIn, onSignOut }) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useStyles(getStyles);
@@ -87,6 +137,9 @@ export default function MainTabs({ auth, onSignOut }) {
   const [cartItems, setCartItems] = useState([]);
   const [stack, setStack] = useState([]);
   const [shippingMethodId, setShippingMethodId] = useState(null);
+  // Which courier the buyer picked. Changing it clears the method, because a method belongs to
+  // exactly one courier and carrying the old id across would price the order from the wrong row.
+  const [courierId, setCourierId] = useState(null);
   const [shippingAddress, setShippingAddress] = useState(DEFAULT_ADDRESS);
   const [savedAddress, setSavedAddress] = useState(null);
   const [paymentMethodId, setPaymentMethodId] = useState(null);
@@ -96,10 +149,14 @@ export default function MainTabs({ auth, onSignOut }) {
   const [dataError, setDataError] = useState("");
   const [mutationBusy, setMutationBusy] = useState(false);
   const [mutationError, setMutationError] = useState("");
+  const [catalogValidated, setCatalogValidated] = useState(false);
   const checkoutAttemptId = useRef(null);
   const loadStoreRef = useRef(null);
-  const lastLoadedAtRef = useRef(0);
+  const loadRequestRef = useRef(0);
+  const cacheSnapshotRef = useRef(null);
+  const contentGenerationRef = useRef(0);
   const lastRevisionRef = useRef(null);
+  const lastRevisionCheckRef = useRef(0);
   const backgroundedAtRef = useRef(0);
   const silentFailuresRef = useRef(0);
   const stateRef = useRef({});
@@ -117,42 +174,90 @@ export default function MainTabs({ auth, onSignOut }) {
   const tRef = useRef(t);
   tRef.current = t;
 
-  // Load modes:
-  //   "initial" — no data yet; the shell shows skeletons but stays interactive
-  //   "silent"  — background refresh (realtime, foreground, festival expiry); no UI at all
-  //   "user"    — pull-to-refresh or an explicit retry; inline spinner
-  // Only "initial" is allowed to take over the screen, and only when there is nothing to
-  // show. Previously every refresh blanked the whole app behind an opaque overlay.
-  const loadStore = useCallback(async (mode = "initial") => {
+  const requestSignIn = useCallback(() => {
+    Alert.alert(
+      tRef.current("guest.signInRequiredTitle"),
+      tRef.current("guest.signInRequiredMessage"),
+      [
+        { text: tRef.current("common.cancel"), style: "cancel" },
+        {
+          text: tRef.current("launch.googleSignIn"),
+          onPress: () => onSignIn?.(),
+        },
+      ]
+    );
+  }, [onSignIn]);
+
+  // Cached public content can paint immediately, but cart/profile are still fetched and every
+  // mutation remains gated until the cached catalogue revision has been confirmed.
+  const loadStore = useCallback(async (mode = "initial", options = {}) => {
+    const generation = contentGenerationRef.current;
+    const requestId = loadRequestRef.current + 1;
+    loadRequestRef.current = requestId;
     if (mode !== "silent") {
       setDataStatus("loading");
       setDataError("");
     }
     try {
       const isClient = auth?.role === "CLIENT";
+      const cachedSnapshot = options.cachedSnapshot ?? cacheSnapshotRef.current;
+      const forceCatalog = options.forceCatalog || mode === "user";
+      const includeAccountData = options.includeAccountData !== false;
+      let revision = options.revision === null || options.revision === undefined
+        ? null
+        : String(options.revision);
+      let revisionConfirmed = Boolean(revision);
 
-      // One parallel batch. These four calls have no data dependency on each other — the
-      // old code awaited them in sequence purely so the responses could be *mapped* in
-      // order. Fetching is now separated from mapping, so the round-trips collapse from
-      // four into one. allSettled keeps the best-effort semantics of profile and cart.
+      if (!revision) {
+        try {
+          revision = await getCurrentCatalogRevision();
+          revisionConfirmed = Boolean(revision);
+          lastRevisionCheckRef.current = Date.now();
+        } catch {
+          // A cached catalogue is still useful for offline browsing. Without a confirmed
+          // revision it cannot enable add-to-cart or checkout.
+          revision = null;
+        }
+      }
+
+      const cacheMatches = Boolean(
+        cachedSnapshot
+        && !forceCatalog
+        && (!revision || String(cachedSnapshot.catalogRevision) === revision)
+      );
+      const catalogPromise = cacheMatches
+        ? Promise.resolve(cachedSnapshot.catalogRaw)
+        : fetchCatalogRaw();
+
       const [storefrontResult, catalogResult, cartResult, profileResult] = await Promise.allSettled([
         getStorefront(),
-        fetchCatalogRaw(),
-        isClient ? fetchCartRaw() : Promise.resolve(null),
-        isClient ? getProfile() : Promise.resolve(null),
+        catalogPromise,
+        isClient && includeAccountData ? fetchCartRaw() : Promise.resolve(null),
+        isClient && includeAccountData ? getProfile() : Promise.resolve(null),
       ]);
 
+      if (
+        generation !== contentGenerationRef.current
+        || requestId !== loadRequestRef.current
+      ) return;
       if (catalogResult.status === "rejected") throw catalogResult.reason;
 
-      const nextStorefront = (storefrontResult.status === "fulfilled" && storefrontResult.value?.data)
-        || { carouselSlides: [], activeFestivalDiscount: null };
+      const nextStorefront = storefrontForNow(
+        (storefrontResult.status === "fulfilled" && storefrontResult.value?.data)
+        || cachedSnapshot?.storefront
+        || EMPTY_STOREFRONT
+      );
       const festival = nextStorefront.activeFestivalDiscount;
-
-      // Pure mapping, unchanged — same functions, same arguments, just applied after the
-      // batch instead of between round-trips.
       const nextCatalog = buildCatalog(catalogResult.value, festival);
+
+      const effectiveRevision = revision || cachedSnapshot?.catalogRevision || null;
+      if (effectiveRevision) {
+        setCatalogCacheRevision(effectiveRevision);
+        lastRevisionRef.current = String(effectiveRevision);
+      }
       setStorefront(nextStorefront);
       setCatalog(nextCatalog);
+      prefetchVisibleStoreImages(nextCatalog, nextStorefront);
 
       if (isClient && cartResult.status === "fulfilled" && cartResult.value) {
         setCartItems(mapApiCart(cartResult.value.data, nextCatalog, festival));
@@ -173,10 +278,29 @@ export default function MainTabs({ auth, onSignOut }) {
         setShippingAddress(loaded);
       }
 
-      lastLoadedAtRef.current = Date.now();
+      const catalogueIsCurrent = !cacheMatches
+        || (revisionConfirmed && String(cachedSnapshot.catalogRevision) === revision);
+      setCatalogValidated(catalogueIsCurrent);
+
+      if (
+        revision
+        && storefrontResult.status === "fulfilled"
+      ) {
+        const saved = await writeCatalogSnapshot({
+          catalogRevision: revision,
+          catalogRaw: catalogResult.value,
+          storefront: nextStorefront,
+        });
+        if (saved) cacheSnapshotRef.current = saved;
+      }
+
       silentFailuresRef.current = 0;
       setDataStatus("ready");
     } catch (error) {
+      if (
+        generation !== contentGenerationRef.current
+        || requestId !== loadRequestRef.current
+      ) return;
       // A silent refresh must not destroy data the user is already looking at. Only
       // escalate to a visible error once background refreshes have failed repeatedly.
       if (mode === "silent") {
@@ -193,20 +317,66 @@ export default function MainTabs({ auth, onSignOut }) {
   loadStoreRef.current = loadStore;
 
   useEffect(() => {
-    loadStore("initial");
+    let cancelled = false;
+    void maintainImageDiskCache().catch(() => {});
+
+    (async () => {
+      const cachedSnapshot = await readCatalogSnapshot();
+      if (cancelled) return;
+
+      if (cachedSnapshot) {
+        const cachedStorefront = storefrontForNow(cachedSnapshot.storefront);
+        const cachedCatalog = buildCatalog(
+          cachedSnapshot.catalogRaw,
+          cachedStorefront.activeFestivalDiscount
+        );
+        cacheSnapshotRef.current = cachedSnapshot;
+        lastRevisionRef.current = cachedSnapshot.catalogRevision;
+        setCatalogCacheRevision(cachedSnapshot.catalogRevision);
+        setStorefront(cachedStorefront);
+        setCatalog(cachedCatalog);
+        setDataStatus("ready");
+        prefetchVisibleStoreImages(cachedCatalog, cachedStorefront);
+      }
+
+      await loadStore(cachedSnapshot ? "silent" : "initial", {
+        cachedSnapshot,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [loadStore]);
 
   useEffect(() => {
     let refreshTimer;
-    // Jittered so N clients do not all hit /products in the same 500 ms window after an
-    // admin edits the catalog.
-    const scheduleRefresh = () => {
+    const invalidateAndRefresh = (nextRevision) => {
+      const revision = nextRevision === null || nextRevision === undefined
+        ? null
+        : String(nextRevision);
+      if (revision && revision === lastRevisionRef.current) return;
+
+      if (revision) lastRevisionRef.current = revision;
+      lastRevisionCheckRef.current = Date.now();
+      contentGenerationRef.current += 1;
+      cacheSnapshotRef.current = null;
+      setCatalogValidated(false);
+      setCatalogCacheRevision(revision);
       clearTimeout(refreshTimer);
+      const invalidation = clearCatalogDataCache();
       refreshTimer = setTimeout(
-        () => loadStoreRef.current?.("silent"),
-        500 + Math.random() * 4500
+        async () => {
+          await invalidation;
+          await loadStoreRef.current?.("silent", {
+            forceCatalog: true,
+            revision,
+          });
+        },
+        REVISION_DEBOUNCE_MS
       );
     };
+
     const channel = supabase
       .channel("catalog-revision")
       .on(
@@ -215,30 +385,35 @@ export default function MainTabs({ auth, onSignOut }) {
         (payload) => {
           // The revision number used to be discarded, so every event forced a full
           // re-download. Skip events that do not actually advance the revision.
-          const revision = payload?.new?.revision ?? payload?.new?.updated_at ?? null;
-          if (revision !== null && revision === lastRevisionRef.current) return;
-          lastRevisionRef.current = revision;
-          scheduleRefresh();
+          invalidateAndRefresh(payload?.new?.revision ?? payload?.new?.updated_at ?? null);
         }
       )
-      .subscribe((status) => {
-        // Subscribing used to fire a refresh unconditionally, which ran the entire
-        // waterfall a second time ~500 ms after every cold start.
-        if (status !== "SUBSCRIBED") return;
-        if (Date.now() - lastLoadedAtRef.current < STALE_AFTER_MS) return;
-        scheduleRefresh();
-      });
+      .subscribe();
+
     const appStateSubscription = AppState.addEventListener("change", (state) => {
       if (state !== "active") {
         backgroundedAtRef.current = Date.now();
         return;
       }
-      // Foreground fires for the notification shade, permission dialogs, returning from
-      // Google sign-in and unlocking. Only refresh after a real absence, and only if the
-      // data is actually stale.
       const away = Date.now() - backgroundedAtRef.current;
-      const stale = Date.now() - lastLoadedAtRef.current > STALE_AFTER_MS;
-      if (away > MIN_BACKGROUND_MS && stale) scheduleRefresh();
+      const checkIsStale = Date.now() - lastRevisionCheckRef.current > STALE_AFTER_MS;
+      if (away <= MIN_BACKGROUND_MS || !checkIsStale) return;
+
+      getCurrentCatalogRevision()
+        .then((revision) => {
+          lastRevisionCheckRef.current = Date.now();
+          if (String(revision) !== String(lastRevisionRef.current)) {
+            invalidateAndRefresh(revision);
+            return;
+          }
+          return loadStoreRef.current?.("silent", {
+            cachedSnapshot: cacheSnapshotRef.current,
+            revision,
+          });
+        })
+        .catch(() => {
+          setCatalogValidated(false);
+        });
     });
     return () => {
       clearTimeout(refreshTimer);
@@ -251,9 +426,30 @@ export default function MainTabs({ auth, onSignOut }) {
     const endsAt = storefront.activeFestivalDiscount?.endsAt;
     if (!endsAt) return undefined;
     const delay = Math.max(0, new Date(endsAt).getTime() - Date.now() + 1000);
-    const timeout = setTimeout(() => loadStore("silent"), Math.min(delay, 2_147_000_000));
+    const timeout = setTimeout(
+      () => loadStore("silent", {
+        cachedSnapshot: cacheSnapshotRef.current,
+        revision: lastRevisionRef.current,
+      }),
+      Math.min(delay, 2_147_000_000)
+    );
     return () => clearTimeout(timeout);
   }, [loadStore, storefront.activeFestivalDiscount?.endsAt]);
+
+  // A scheduled campaign becoming active is a clock transition, not a database write, so it
+  // cannot emit catalog_revision at that moment. Refresh only the tiny storefront response
+  // once a minute while foregrounded; the cached catalog means no product request is made.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (AppState.currentState !== "active") return;
+      void loadStore("silent", {
+        cachedSnapshot: cacheSnapshotRef.current,
+        revision: lastRevisionRef.current,
+        includeAccountData: false,
+      });
+    }, STALE_AFTER_MS);
+    return () => clearInterval(interval);
+  }, [loadStore]);
 
   const screens = useMemo(
     () => ({
@@ -284,16 +480,21 @@ export default function MainTabs({ auth, onSignOut }) {
   const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
   const currentRoute = stack[stack.length - 1] ?? null;
   const hasData = catalog.categories.length > 0;
+  // A guest has no authenticated fallback request to retry. On any empty-store failure,
+  // offer the one action that can move them forward instead of a retry loop.
+  const showGuestSignIn = !auth?.isSignedIn;
 
   // Latest-value mirror of the state the stable handlers below need to read.
-  stateRef.current = { cartItems, catalog, storefront, mutationBusy };
+  stateRef.current = { cartItems, catalog, storefront, mutationBusy, catalogValidated };
   stackRef.current = stack;
   tabHistoryRef.current = tabHistory;
-  const shippingMethod = SHIPPING_OPTIONS.find((option) => option.id === shippingMethodId) ?? null;
+  // Resolved out of the admin-managed couriers rather than a hardcoded array.
+  const couriers = storefront.couriers || [];
+  const shippingMethod = findMethod(couriers, shippingMethodId);
   const paymentMethod = PAYMENT_OPTIONS.find((option) => option.id === paymentMethodId) ?? null;
   const checkoutTotals = getCheckoutTotals({
     cartItems,
-    shippingCost: shippingMethod?.price ?? 0,
+    shippingCost: methodPriceBdt(shippingMethod),
     festivalCampaign: storefront.activeFestivalDiscount,
   });
 
@@ -301,12 +502,16 @@ export default function MainTabs({ auth, onSignOut }) {
   // stays bounded by the tab count and back never walks a loop. Choosing Home explicitly
   // clears the trail — Home is then one press from the exit prompt.
   const navigateToTab = useCallback((key) => {
+    if (key === TAB_KEYS.CART && !auth?.isSignedIn) {
+      requestSignIn();
+      return;
+    }
     setTabHistory((prev) => {
       if (prev[prev.length - 1] === key) return prev;
       if (key === TAB_KEYS.HOME) return [TAB_KEYS.HOME];
       return [TAB_KEYS.HOME, ...prev.filter((tab) => tab !== TAB_KEYS.HOME && tab !== key), key];
     });
-  }, []);
+  }, [auth?.isSignedIn, requestSignIn]);
 
   const popTab = useCallback(() => {
     setTabHistory((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
@@ -328,10 +533,22 @@ export default function MainTabs({ auth, onSignOut }) {
     (product) => pushScreen(STACK_ROUTES.PRODUCT_DETAILS, { product }),
     [pushScreen]
   );
-  const handleOrdersPress = useCallback(() => pushScreen(STACK_ROUTES.ORDERS), [pushScreen]);
+  const handleOrdersPress = useCallback(() => {
+    if (!auth?.isSignedIn) {
+      requestSignIn();
+      return;
+    }
+    pushScreen(STACK_ROUTES.ORDERS);
+  }, [auth?.isSignedIn, pushScreen, requestSignIn]);
   const handleExpenseTrackerPress = useCallback(
-    () => pushScreen(STACK_ROUTES.EXPENSE_TRACKER),
-    [pushScreen]
+    () => {
+      if (!auth?.isSignedIn) {
+        requestSignIn();
+        return;
+      }
+      pushScreen(STACK_ROUTES.EXPENSE_TRACKER);
+    },
+    [auth?.isSignedIn, pushScreen, requestSignIn]
   );
   const handleHelpCenterPress = useCallback(
     () => pushScreen(STACK_ROUTES.HELP_CENTER),
@@ -418,6 +635,14 @@ export default function MainTabs({ auth, onSignOut }) {
   // set only in the edit case and carries enough to restore the original if the save fails.
   const handleAddConfiguredProduct = async (configs, editingLine) => {
     if (!configs?.length || mutationBusy) return;
+    if (!auth?.isSignedIn) {
+      requestSignIn();
+      return;
+    }
+    if (!catalogValidated) {
+      setMutationError(t("errors.catalogRefreshing"));
+      return;
+    }
     setMutationBusy(true);
     setMutationError("");
     const festival = storefront.activeFestivalDiscount;
@@ -449,7 +674,15 @@ export default function MainTabs({ auth, onSignOut }) {
   };
 
   const handleStartCheckout = (couponCode) => {
+    if (!auth?.isSignedIn) {
+      requestSignIn();
+      return;
+    }
     if (!cartItems.length) {
+      return;
+    }
+    if (!catalogValidated) {
+      setMutationError(t("errors.catalogRefreshing"));
       return;
     }
     if (cartItems.some((item) => !item.configurationValid)) {
@@ -481,6 +714,14 @@ export default function MainTabs({ auth, onSignOut }) {
 
   const handlePlaceOrder = async () => {
     if (mutationBusy) return;
+    if (!auth?.isSignedIn) {
+      requestSignIn();
+      return;
+    }
+    if (!catalogValidated) {
+      setMutationError(t("errors.catalogRefreshing"));
+      return;
+    }
     setMutationBusy(true);
     setMutationError("");
     try {
@@ -491,7 +732,9 @@ export default function MainTabs({ auth, onSignOut }) {
       const response = await createOrder({
         idempotencyKey: checkoutAttemptId.current,
         address: shippingMethod?.requiresAddress ? shippingAddress : undefined,
-        shippingMethod: shippingMethod?.id?.toUpperCase(),
+        // Only the id: the server reads the price from that row, so no amount is ever sent
+        // from the client.
+        shippingMethodId: shippingMethod ? Number(shippingMethod.id) : undefined,
         paymentMethod: paymentMethod?.id === "bank" ? "BANK_TRANSFER" : "COD",
       });
       const order = response.data;
@@ -503,13 +746,14 @@ export default function MainTabs({ auth, onSignOut }) {
         itemCount,
         packs: cartItems,
         total: paisaToBdt(order.grandTotalPaisa),
-        shippingMethodKey: shippingMethod?.labelKey || "checkout.pickup",
+        shippingMethodLabel: shippingMethod ? localizedName(shippingMethod, language) : "",
         paymentMethodKey: paymentMethod?.labelKey || "status.unpaid",
-        etaKey: shippingMethod?.descriptionKey || "checkout.pickupDescription",
+        etaLabel: shippingMethod ? formatDeliveryDays(shippingMethod, language, t) : "",
         status: order.status,
       });
       setCartItems([]);
       setShippingMethodId(null);
+      setCourierId(null);
       setShippingAddress(DEFAULT_ADDRESS);
       setPaymentMethodId(null);
       setAppliedCoupon("");
@@ -600,10 +844,13 @@ export default function MainTabs({ auth, onSignOut }) {
           <ShippingScreen
             cartItems={cartItems}
             appliedCoupon={appliedCoupon}
+            couriers={couriers}
+            courierId={courierId}
             shippingMethod={shippingMethodId}
             shippingAddress={shippingAddress}
             savedAddress={savedAddress}
             onBack={popScreen}
+            onSelectCourier={(nextCourierId) => { setCourierId(nextCourierId); setShippingMethodId(null); }}
             onSelectShipping={setShippingMethodId}
             onAddressChange={setShippingAddress}
             onContinue={handleContinueToPayment}
@@ -686,6 +933,7 @@ export default function MainTabs({ auth, onSignOut }) {
             loading={dataStatus === "loading" || mutationBusy}
             error={mutationError}
             auth={auth}
+            onSignIn={onSignIn}
             onSignOut={handleSignOut}
             onOrdersPress={handleOrdersPress}
             onExpenseTrackerPress={handleExpenseTrackerPress}
@@ -702,25 +950,27 @@ export default function MainTabs({ auth, onSignOut }) {
           only allowed to appear when there is genuinely nothing to show. A background
           refresh over existing content stays silent. */}
       {dataStatus === "loading" && !hasData ? (
-        <View style={styles.statusOverlay}>
-          <ActivityIndicator size="large" color={colors.brand} />
-          <AppText variant="body" tone="secondary" style={styles.statusText}>
-            {t("common.loading")}
-          </AppText>
-        </View>
+        <NoboSoleLoader
+          style={styles.loaderOverlay}
+          accessibilityLabel={`NoboSole ${t("common.loading")}`}
+        />
       ) : null}
       {dataStatus === "error" && !hasData ? (
         <View style={styles.statusOverlay} accessibilityLiveRegion="assertive">
           <AppText variant="h2" style={styles.statusTitle}>
-            {t("errors.storeUnavailable")}
+            {showGuestSignIn ? t("guest.signInRequiredTitle") : t("errors.storeUnavailable")}
           </AppText>
           <AppText variant="body" tone="secondary" style={styles.statusText}>
             {dataError}
           </AppText>
           <Button
-            title={t("common.retry")}
+            title={
+              showGuestSignIn ? t("launch.googleSignIn") : t("common.retry")
+            }
             // Wrapped so the press event cannot land in the `mode` parameter.
-            onPress={() => loadStore("user")}
+            onPress={
+              showGuestSignIn ? onSignIn : () => loadStore("user")
+            }
             size="md"
             fullWidth={false}
             style={styles.retryButton}
@@ -754,6 +1004,10 @@ const getStyles = (colors) =>
     stackOverlay: {
       ...StyleSheet.absoluteFillObject,
       zIndex: 10,
+    },
+    loaderOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 30,
     },
     statusOverlay: {
       ...StyleSheet.absoluteFillObject,

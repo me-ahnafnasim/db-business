@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import i18n from "../../i18n";
 
 import { installAuthAutoRefresh, supabase } from "../../config/supabase";
@@ -10,12 +11,14 @@ import {
 } from "./services/googleAuth";
 
 const AuthContext = createContext(null);
+const GUEST_PREFERENCE_KEY = "nobosole.auth.guest.v1";
 
 export const AUTH_STATUS = Object.freeze({
   RESTORING: "restoring",
   SIGNED_OUT: "signed-out",
   SIGNING_IN: "signing-in",
   SIGNED_IN: "signed-in",
+  GUEST: "guest",
   SIGNING_OUT: "signing-out",
 });
 
@@ -33,6 +36,8 @@ function userFromBootstrap(data, authUser) {
   const metadata = authUser?.user_metadata || {};
   return {
     isSignedIn: true,
+    isGuest: false,
+    authUserId: authUser?.id || "",
     accountType: data.accountType,
     role: normalizeRole(data.role),
     permissions: Array.isArray(data.permissions) ? data.permissions : [],
@@ -68,17 +73,28 @@ export function AuthProvider({ children }) {
   const [status, setStatus] = useState(AUTH_STATUS.RESTORING);
   const [user, setUser] = useState(null);
   const [error, setError] = useState(null);
+  const guestPreferredRef = useRef(false);
+
+  const signedOutStatus = useCallback(
+    () => (guestPreferredRef.current ? AUTH_STATUS.GUEST : AUTH_STATUS.SIGNED_OUT),
+    []
+  );
 
   const restoreSession = useCallback(async () => {
     setStatus(AUTH_STATUS.RESTORING);
     setError(null);
 
     try {
-      const { data, error: sessionError } = await supabase.auth.getSession();
+      const [sessionResult, guestPreference] = await Promise.all([
+        supabase.auth.getSession(),
+        AsyncStorage.getItem(GUEST_PREFERENCE_KEY),
+      ]);
+      guestPreferredRef.current = guestPreference === "1";
+      const { data, error: sessionError } = sessionResult;
       if (sessionError) throw sessionError;
       if (!data.session) {
         setUser(null);
-        setStatus(AUTH_STATUS.SIGNED_OUT);
+        setStatus(signedOutStatus());
         return;
       }
 
@@ -89,16 +105,16 @@ export function AuthProvider({ children }) {
       await supabase.auth.signOut({ scope: "local" });
       setUser(null);
       setError(getAuthErrorMessage(restoreError));
-      setStatus(AUTH_STATUS.SIGNED_OUT);
+      setStatus(signedOutStatus());
     }
-  }, []);
+  }, [signedOutStatus]);
 
   useEffect(() => {
     const uninstallAutoRefresh = installAuthAutoRefresh();
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
         setUser(null);
-        setStatus(AUTH_STATUS.SIGNED_OUT);
+        setStatus(signedOutStatus());
       }
     });
 
@@ -107,7 +123,15 @@ export function AuthProvider({ children }) {
       listener.subscription.unsubscribe();
       uninstallAutoRefresh();
     };
-  }, [restoreSession]);
+  }, [restoreSession, signedOutStatus]);
+
+  const enterGuest = useCallback(async () => {
+    guestPreferredRef.current = true;
+    await AsyncStorage.setItem(GUEST_PREFERENCE_KEY, "1");
+    setError(null);
+    setUser(null);
+    setStatus(AUTH_STATUS.GUEST);
+  }, []);
 
   const signIn = useCallback(async () => {
     if (status === AUTH_STATUS.SIGNING_IN) return;
@@ -118,7 +142,7 @@ export function AuthProvider({ children }) {
     try {
       const providerResult = await signInWithGoogleProvider();
       if (!providerResult) {
-        setStatus(AUTH_STATUS.SIGNED_OUT);
+        setStatus(signedOutStatus());
         return;
       }
       if (providerResult.redirecting) return;
@@ -130,9 +154,9 @@ export function AuthProvider({ children }) {
       await supabase.auth.signOut({ scope: "local" });
       setUser(null);
       setError(getAuthErrorMessage(signInError));
-      setStatus(AUTH_STATUS.SIGNED_OUT);
+      setStatus(signedOutStatus());
     }
-  }, [status]);
+  }, [signedOutStatus, status]);
 
   const signOut = useCallback(async () => {
     setStatus(AUTH_STATUS.SIGNING_OUT);
@@ -143,8 +167,8 @@ export function AuthProvider({ children }) {
       signOutGoogleProvider(),
     ]);
     setUser(null);
-    setStatus(AUTH_STATUS.SIGNED_OUT);
-  }, []);
+    setStatus(signedOutStatus());
+  }, [signedOutStatus]);
 
   const completeProfile = useCallback(async () => {
     setStatus(AUTH_STATUS.RESTORING);
@@ -171,12 +195,13 @@ export function AuthProvider({ children }) {
         status === AUTH_STATUS.SIGNING_IN ||
         status === AUTH_STATUS.SIGNING_OUT,
       signIn,
+      enterGuest,
       signOut,
       completeProfile,
       clearError: () => setError(null),
       restoreSession,
     }),
-    [completeProfile, error, restoreSession, signIn, signOut, status, user]
+    [completeProfile, enterGuest, error, restoreSession, signIn, signOut, status, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

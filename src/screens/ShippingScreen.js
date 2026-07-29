@@ -6,22 +6,26 @@ import StackScreenShell from "../components/StackScreenShell";
 import ShippingAddressForm from "../features/checkout/components/ShippingAddressForm";
 import ShippingOptionCard from "../features/checkout/components/ShippingOptionCard";
 import CheckoutSummaryCard from "../features/checkout/components/CheckoutSummaryCard";
-import { SHIPPING_OPTIONS } from "../features/checkout/data/shippingOptions";
+import { findMethod, localizedName, selectableCouriers } from "../features/checkout/utils/deliveryOptions";
 import { getCheckoutTotals } from "../features/checkout/utils/checkoutPricing";
 import { spacing, useStyles } from "../theme";
 import { AppText, Button, SelectionCard } from "../ui";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { formatBdt } from "../utils/money";
+import { methodPriceBdt } from "../features/checkout/utils/deliveryOptions";
 
 const BD_PHONE_RE = /^01[3-9]\d{8}$/;
 
 export default function ShippingScreen({
   cartItems,
   appliedCoupon,
+  couriers,
+  courierId,
   shippingMethod,
   shippingAddress,
   savedAddress,
   onBack,
+  onSelectCourier,
   onSelectShipping,
   onAddressChange,
   onContinue,
@@ -29,9 +33,22 @@ export default function ShippingScreen({
   const { language } = useLanguage();
   const { t } = useTranslation();
   const styles = useStyles(getStyles);
-  const currentMethod = SHIPPING_OPTIONS.find((option) => option.id === shippingMethod) ?? null;
+  // Couriers and their methods are admin-managed and arrive with the storefront payload, so
+  // this screen renders whatever the dashboard currently offers rather than a fixed list.
+  const options = useMemo(() => selectableCouriers(couriers), [couriers]);
+  const currentCourier = useMemo(
+    () => options.find((courier) => String(courier.id) === String(courierId)) ?? null,
+    [options, courierId]
+  );
+  const currentMethod = useMemo(() => findMethod(couriers, shippingMethod), [couriers, shippingMethod]);
   const totals = useMemo(
-    () => getCheckoutTotals({ cartItems, shippingCost: currentMethod?.price ?? 0, appliedCoupon }),
+    () => getCheckoutTotals({
+      cartItems,
+      // Shown to the buyer before they order; the server re-reads the same row and charges
+      // from it, so this is a preview of an authoritative number rather than the number itself.
+      shippingCost: methodPriceBdt(currentMethod),
+      appliedCoupon,
+    }),
     [appliedCoupon, cartItems, currentMethod]
   );
 
@@ -68,14 +85,40 @@ export default function ShippingScreen({
         />
       }
     >
-      {SHIPPING_OPTIONS.map((option) => (
-        <ShippingOptionCard
-          key={option.id}
-          option={option}
-          selected={option.id === shippingMethod}
-          onPress={() => onSelectShipping?.(option.id)}
-        />
-      ))}
+      {!options.length ? (
+        <AppText variant="bodySm" tone="secondary" style={styles.sectionNote}>
+          {t("checkout.noCouriers")}
+        </AppText>
+      ) : (
+        <>
+          {/* Courier first, then that courier's methods: the price belongs to the pair, so a
+              method cannot be chosen until its carrier is. */}
+          <AppText variant="label" style={styles.sectionTitle}>{t("checkout.chooseCourier")}</AppText>
+          {options.map((courier) => (
+            <SelectionCard
+              key={courier.id}
+              selected={String(courier.id) === String(courierId)}
+              onPress={() => onSelectCourier?.(courier.id)}
+              title={localizedName(courier, language)}
+              description={t("checkout.chooseCourierSubtitle")}
+            />
+          ))}
+
+          {currentCourier ? (
+            <>
+              <AppText variant="label" style={styles.sectionTitle}>{t("checkout.chooseMethod")}</AppText>
+              {currentCourier.methods.map((method) => (
+                <ShippingOptionCard
+                  key={method.id}
+                  method={method}
+                  selected={String(method.id) === String(shippingMethod)}
+                  onPress={() => onSelectShipping?.(method.id)}
+                />
+              ))}
+            </>
+          ) : null}
+        </>
+      )}
       {currentMethod?.requiresAddress ? (
         hasSaved ? (
           <>
@@ -137,6 +180,13 @@ export default function ShippingScreen({
 
 const getStyles = () =>
   StyleSheet.create({
+    sectionTitle: {
+      marginTop: spacing.sm,
+      marginBottom: spacing.sm,
+    },
+    sectionNote: {
+      marginBottom: spacing.lg,
+    },
     addressDetails: {
       marginTop: spacing.sm,
       gap: spacing.xs / 2,
