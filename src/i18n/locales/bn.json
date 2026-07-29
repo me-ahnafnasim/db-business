@@ -122,7 +122,14 @@
     "tierTitle": "বেশি নিলে দাম কম",
     "tierRow": "{{count}} ডজন বা তার বেশি",
     "tierApplied": "প্রযোজ্য",
-    "selectionMax": "{{max}} টির মধ্যে {{selected}} টি"
+    "selectionMax": "{{max}} টির মধ্যে {{selected}} টি",
+    "filterAll": "সব",
+    "filterAllPrices": "সব দাম",
+    "bandLow": "কম",
+    "bandMedium": "মাঝারি",
+    "bandHigh": "বেশি",
+    "filterSummary": "{{count}} টি পণ্য",
+    "moreProducts": "আরও পণ্য ({{count}})"
   },
   "search": {
     "title": "খুঁজুন",

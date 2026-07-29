@@ -236,6 +236,69 @@ async function run() {
   check('catalog list still filters to active products',
     requestedParams && requestedParams.isActive === true);
 
+  // ---- 5. Categories pages and filters on the SERVER ---------------------------------------
+  //
+  // Every other screen shares one bulk-loaded catalogue. Categories does not: it is the only
+  // place that has to stay correct past the bulk fetch's limit of 100, so its filters and its
+  // paging are the server's job. These assert the request it sends, because a filter that is
+  // silently dropped looks exactly like a filter that matched everything.
+  const page = await spyService.fetchCategoryPage({ section: 'featured', priceBand: 'LOW', page: 2 });
+
+  check('category page asks for 12', requestedParams.limit === spyService.CATEGORY_PAGE_SIZE
+    && spyService.CATEGORY_PAGE_SIZE === 12, JSON.stringify(requestedParams));
+  check('category page forwards the section', requestedParams.section === 'featured');
+  check('category page forwards the price band', requestedParams.priceBand === 'LOW');
+  check('category page forwards the page number', requestedParams.page === 2);
+  check('category page still asks for cards only', requestedParams.view === 'card');
+  check('category page still filters to active products', requestedParams.isActive === true);
+  check('category page returns pagination for the More button', Boolean(page.pagination));
+  check('category page maps products the same way the grid expects',
+    page.products.every((product) => product.id && Number.isFinite(product.price)));
+
+  // An unfiltered page must send neither key, not send them as undefined — URLSearchParams
+  // serialises undefined as the string "undefined", which the server would then reject as an
+  // unknown value and silently ignore, making "All" behave differently from a fresh install.
+  await spyService.fetchCategoryPage({});
+  check('an unfiltered page omits section entirely', !('section' in requestedParams),
+    JSON.stringify(requestedParams));
+  check('...and omits priceBand entirely', !('priceBand' in requestedParams));
+
+  // ---- 6. Home's View All actually reaches Categories ---------------------------------------
+  //
+  // Read from source rather than rendered, because MainTabs needs a React tree to run and the
+  // failure was never in a function — it was in which function the bar was wired to. A shipped
+  // bug did exactly this: handleViewCategory set the section and navigateToTab cleared it in the
+  // same event, so every View All opened the full catalogue.
+  const mainTabs = fs.readFileSync(path.join(root, 'src/screens/MainTabs.js'), 'utf8');
+  const home = fs.readFileSync(path.join(root, 'src/screens/HomeScreen.js'), 'utf8');
+  const categories = fs.readFileSync(path.join(root, 'src/screens/CategoriesScreen.js'), 'utf8');
+
+  for (const section of ['featured', 'new', 'popular']) {
+    check(`Home's View All requests section=${section}`,
+      home.includes(`onViewCategory?.({ section: "${section}" })`));
+  }
+  check('the bar has its own handler, not navigateToTab',
+    /onTabPress=\{handleTabBarPress\}/.test(mainTabs));
+  check('navigateToTab no longer clears the filter',
+    !/TAB_KEYS\.CATEGORIES\) setCategorySection/.test(mainTabs)
+    && !/if \(key === TAB_KEYS\.CATEGORIES\) setCategoryFilter/.test(mainTabs),
+    'a reset inside navigateToTab would undo every View All');
+  check('only the bar handler resets the filter',
+    /handleTabBarPress[\s\S]{0,220}key === TAB_KEYS\.CATEGORIES[\s\S]{0,120}section: null/.test(mainTabs));
+  check('each request carries a new id', /requestId: current\.requestId \+ 1/.test(mainTabs));
+  check('...and Categories re-applies on it',
+    /\}, \[initialSection, filterRequestId\]\)/.test(categories),
+    'without requestId, asking for the section already shown is a no-op');
+  check('both props are passed through',
+    /initialSection=\{categoryFilter\.section\}/.test(mainTabs)
+    && /filterRequestId=\{categoryFilter\.requestId\}/.test(mainTabs));
+
+  // The band rides on the card, because Categories filters by it and the detail screen shows it.
+  const banded = catalogService.buildCatalog(await catalogService.fetchCatalogRaw(), null)
+    .categories[0].products;
+  check('every card carries a price band', banded.every((product) => product.priceBand),
+    banded.map((product) => product.priceBand).join(','));
+
   // ---- 4. The pack a buyer builds is a valid pack -----------------------------------------
   //
   // packColors holds the rules the configurator applies once colours and sizes are chosen:

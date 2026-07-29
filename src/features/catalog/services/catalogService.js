@@ -62,6 +62,7 @@ export function mapApiProduct(product, festivalCampaign = null) {
     pairsPerDozen: Number(product.pairsPerDozen || 12),
     unitLabel: "dozen",
     categoryName: "All Products",
+    priceBand: product.priceBand || "MEDIUM",
     // Server-generated (NSP-000042) and shown to the buyer, so they have something short and
     // exact to quote to support. The API always sent it; this mapper used to drop it.
     productCode: product.productCode || "",
@@ -108,6 +109,7 @@ export function mapApiProductCard(product, festivalCampaign = null) {
     discountPercent: Number(festivalCampaign?.discountPercent || 0),
     moq: Number(product.minimumOrderDozen || 1),
     categoryName: "All Products",
+    priceBand: product.priceBand || "MEDIUM",
     productCode: product.productCode || "",
     isFeatured: Boolean(product.isFeatured),
     isPopular: Boolean(product.isPopular),
@@ -129,8 +131,22 @@ export function mapApiProductCard(product, festivalCampaign = null) {
 // discount into `price`, so caching the mapped object would serve a stale discount for as
 // long as the entry lived — a campaign starting or ending mid-session would leave the details
 // screen quoting the old figure while the grid card behind it quoted the new one.
+// Bounded LRU, mirroring the disk cache's DETAIL_LIMIT idea. Unbounded, a session that
+// browsed the whole catalogue held every detail payload (~3.3 KB each) in memory until the
+// next revision bump.
+const DETAIL_MEMORY_LIMIT = 30;
 const detailCache = new Map();
 let activeCatalogRevision = null;
+
+// Map iterates in insertion order, so delete-then-set makes the entry newest and the first
+// key is always the least recently used.
+function touchDetailCache(key, raw) {
+  detailCache.delete(key);
+  detailCache.set(key, raw);
+  while (detailCache.size > DETAIL_MEMORY_LIMIT) {
+    detailCache.delete(detailCache.keys().next().value);
+  }
+}
 
 export function setCatalogCacheRevision(revision) {
   const normalized = revision === null || revision === undefined ? null : String(revision);
@@ -145,9 +161,11 @@ export function clearProductDetailMemoryCache() {
 export async function fetchProductDetail(id, festivalCampaign = null) {
   const key = String(id);
   let raw = detailCache.get(key);
-  if (!raw) {
+  if (raw) {
+    touchDetailCache(key, raw);
+  } else {
     raw = await readProductDetailCache(key, activeCatalogRevision);
-    if (raw) detailCache.set(key, raw);
+    if (raw) touchDetailCache(key, raw);
   }
   if (!raw) {
     const requestedRevision = activeCatalogRevision;
@@ -156,7 +174,7 @@ export async function fetchProductDetail(id, festivalCampaign = null) {
     // A realtime invalidation can land while this request is in flight. Never put a response
     // from the old revision back into the newly-cleared cache.
     if (requestedRevision === activeCatalogRevision) {
-      detailCache.set(key, raw);
+      touchDetailCache(key, raw);
       await writeProductDetailCache(key, requestedRevision, raw);
     }
   }
@@ -208,6 +226,36 @@ export function buildCatalog({ response }, festivalCampaign = null) {
     featuredProducts,
     newArrivals,
     popularProducts,
+  };
+}
+
+// How many products Categories asks for at a time. Twelve is three or four rows on a phone —
+// enough to judge a filter, short enough that the "More products" button is reachable without a
+// long scroll. The server caps `limit` at 100, so this is well inside it.
+export const CATEGORY_PAGE_SIZE = 12;
+
+// One page of the catalogue, filtered on the server. Separate from fetchCatalogRaw on purpose:
+// that one bulk-loads 100 products once and Home and Search share it, whereas this is paged and
+// belongs to whatever filter Categories currently has selected.
+//
+// `section` and `priceBand` are sent only when set, so an unfiltered page is the same request
+// the app has always made.
+export async function fetchCategoryPage({ section, priceBand, page = 1, festivalCampaign = null } = {}) {
+  const response = await getProducts({
+    page,
+    limit: CATEGORY_PAGE_SIZE,
+    isActive: true,
+    view: "card",
+    ...(section ? { section } : {}),
+    ...(priceBand ? { priceBand } : {}),
+  });
+
+  return {
+    products: (response.data || [])
+      .filter(Boolean)
+      .map((product) => mapApiProductCard(product, festivalCampaign))
+      .filter((product) => product.variantCount),
+    pagination: response.pagination || { page, totalPages: 1, total: 0 },
   };
 }
 

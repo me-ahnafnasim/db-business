@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import * as SplashScreen from "expo-splash-screen";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import {
@@ -13,8 +15,24 @@ import ProfileCompletionScreen from "./src/screens/ProfileCompletionScreen";
 import { ThemeProvider } from "./src/theme/ThemeProvider";
 import ErrorBoundary from "./src/ui/ErrorBoundary";
 
+// Hold the native splash until the providers have restored their stored preferences.
+// Without this it auto-hid on the first frame, which was a blank screen (ThemeProvider
+// renders nothing until its AsyncStorage read lands), then a spinner, then the app.
+SplashScreen.preventAutoHideAsync().catch(() => {});
+// Safety net: a hung storage read must degrade to the old behaviour (splash gone, app
+// finishes loading underneath), never to a splash that sits there forever.
+setTimeout(() => {
+  SplashScreen.hideAsync().catch(() => {});
+}, 4000);
+
 function AppContent() {
   const { status, user, error, signIn, enterGuest, signOut, completeProfile } = useAuth();
+
+  // AppContent only mounts once Theme and Language providers are both ready — they render
+  // no children until then — so the first commit here is the first real frame.
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
 
   if (
     status === AUTH_STATUS.RESTORING ||

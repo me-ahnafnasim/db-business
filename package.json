@@ -49,6 +49,7 @@
     "react-native-url-polyfill": "3.0.0"
   },
   "devDependencies": {
+    "babel-plugin-transform-remove-console": "^6.9.4",
     "babel-preset-expo": "~54.0.6",
     "expo-dev-client": "~6.0.21",
     "react-dom": "19.1.0",

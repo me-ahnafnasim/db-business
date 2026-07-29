@@ -238,6 +238,12 @@ export default function BannerCarousel({ slides, active = true }) {
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item, index) => item?.id ?? String(index)}
         renderItem={renderItem}
+        // Every slide is exactly slideWidth, so the list never has to measure — and slide
+        // count is admin-controlled, so it gets windowing like every other list.
+        getItemLayout={(_, index) => ({ length: slideWidth, offset: slideWidth * index, index })}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={3}
         onMomentumScrollEnd={handleMomentumEnd}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
           useNativeDriver: true,

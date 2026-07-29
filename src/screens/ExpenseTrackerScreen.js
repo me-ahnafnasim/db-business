@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
@@ -31,6 +31,11 @@ export default function ExpenseTrackerScreen({ onBack }) {
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
 
+  // `t` through a ref, so toggling EN/BN does not re-create loadOrders and refire the
+  // request through the effect below.
+  const tRef = useRef(t);
+  tRef.current = t;
+
   const loadOrders = useCallback(async () => {
     setStatus("loading");
     setError("");
@@ -39,16 +44,16 @@ export default function ExpenseTrackerScreen({ onBack }) {
       setOrders(response.data || []);
       setStatus("ready");
     } catch (loadError) {
-      setError(getLocalizedError(loadError, t, "orders.loadError"));
+      setError(getLocalizedError(loadError, tRef.current, "orders.loadError"));
       setStatus("error");
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
 
-  const summary = computeSummary(orders);
+  const summary = useMemo(() => computeSummary(orders), [orders]);
   const hasOrders = status === "ready" && orders.length > 0;
 
   const renderOrder = useCallback(({ item }) => <ExpenseOrderCard order={item} />, []);

@@ -1,4 +1,5 @@
 import Feather from "@expo/vector-icons/Feather";
+import { memo } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
@@ -6,7 +7,10 @@ import { getTimeGreeting } from "../features/shared/utils/timeGreeting";
 import { radius, spacing, useStyles, useTheme } from "../theme";
 import { AppText, Badge, IconButton } from "../ui";
 
-export default function Header({ onProfilePress, onSearchPress, onCartPress, cartCount = 0, auth }) {
+// memo: one Header renders under every mounted tab, and its props (four stable handlers, a
+// count, the auth object) almost never change — language and theme still reach it through
+// their contexts.
+export default memo(function Header({ onProfilePress, onSearchPress, onCartPress, cartCount = 0, auth }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const styles = useStyles(getStyles);
@@ -43,7 +47,7 @@ export default function Header({ onProfilePress, onSearchPress, onCartPress, car
       </View>
     </View>
   );
-}
+});
 
 const getStyles = (colors) =>
   StyleSheet.create({

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
@@ -18,18 +18,26 @@ export default function OrdersScreen({ onBack, onContactSupport }) {
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
 
+  // `t` through a ref: as a dependency it re-created loadOrders on every language toggle,
+  // and the effect below dutifully refired GET /client/orders just because the user
+  // switched EN/BN.
+  const tRef = useRef(t);
+  tRef.current = t;
+
   const loadOrders = useCallback(async () => {
     setStatus("loading");
     setError("");
     try {
-      const response = await getClientOrders();
+      // Bounded: this list renders virtualised cards, not an accounting report, and the
+      // request used to ask for every order the account has ever placed.
+      const response = await getClientOrders({ limit: 100 });
       setOrders(response.data || []);
       setStatus("ready");
     } catch (loadError) {
-      setError(getLocalizedError(loadError, t, "orders.loadError"));
+      setError(getLocalizedError(loadError, tRef.current, "orders.loadError"));
       setStatus("error");
     }
-  }, [t]);
+  }, []);
 
   useEffect(() => {
     loadOrders();
@@ -46,17 +54,17 @@ export default function OrdersScreen({ onBack, onContactSupport }) {
         )
       );
     } catch (cancelError) {
-      setError(getLocalizedError(cancelError, t, "orders.cancelError"));
+      setError(getLocalizedError(cancelError, tRef.current, "orders.cancelError"));
     } finally {
       setBusyId(null);
     }
-  }, [t]);
+  }, []);
 
   const renderOrder = useCallback(
     ({ item }) => (
       <OrderHistoryCard order={item} busy={busyId === item.id} onCancel={handleCancel} onContactSupport={onContactSupport} />
     ),
-    [busyId, handleCancel]
+    [busyId, handleCancel, onContactSupport]
   );
 
   // Header travels inside the list so the whole screen scrolls as one virtualised

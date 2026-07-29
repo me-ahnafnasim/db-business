@@ -12,6 +12,11 @@ const THEME_KEY = "@nobosole_theme";
 // preference always wins.
 const DEFAULT_DARK_MODE = false;
 
+// Started at import time, not on mount. The providers nest (Theme gates Language gates the
+// app), so a read that only began on mount serialised the two storage round-trips in front
+// of the first frame. Kicked off here, both run in parallel before React has even mounted.
+const storedThemePromise = AsyncStorage.getItem(THEME_KEY).catch(() => null);
+
 const ThemeContext = createContext({
   colors: lightColors,
   isDarkMode: DEFAULT_DARK_MODE,
@@ -31,7 +36,7 @@ export function ThemeProvider({ children }) {
     // a precondition: if it cannot be read, fall back and carry on.
     async function restoreTheme() {
       try {
-        const stored = await AsyncStorage.getItem(THEME_KEY);
+        const stored = await storedThemePromise;
         if (cancelled) return;
         if (stored !== null) {
           setIsDarkMode(stored === "dark");

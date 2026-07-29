@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { getLocaleLayout } from "./layout";
 import getStorage from "../utils/storage";
@@ -10,6 +9,13 @@ const STORAGE_KEY = "app_language";
 // Bangla throughout: it is the default the app opens in, so it is also the default every
 // fallback here lands on. A stored preference always wins over it.
 const DEFAULT_LANGUAGE = "bn";
+
+// Started at import time so the SecureStore (Keystore) read runs in parallel with
+// ThemeProvider's AsyncStorage read instead of waiting behind it — this provider does not
+// even mount until the theme one is ready.
+const storedLanguagePromise = Promise.resolve()
+  .then(() => getStorage().getItem(STORAGE_KEY))
+  .catch(() => null);
 
 const LanguageContext = createContext({
   language: DEFAULT_LANGUAGE,
@@ -27,7 +33,7 @@ export function LanguageProvider({ children }) {
   useEffect(() => {
     async function loadLanguage() {
       try {
-        const saved = await getStorage().getItem(STORAGE_KEY);
+        const saved = await storedLanguagePromise;
         const initial = saved === "bn" || saved === "en" ? saved : DEFAULT_LANGUAGE;
         await i18n.changeLanguage(initial);
         setLanguageState(initial);
@@ -69,21 +75,13 @@ export function LanguageProvider({ children }) {
     [language, setLanguage, t, toggleLanguage]
   );
 
-  if (!ready) {
-    return <View style={styles.loading}><ActivityIndicator color="#c4950a" size="large" /></View>;
-  }
+  // Nothing rather than a spinner: the native splash is held (App.js) until the first
+  // real frame, so this window is invisible — a hardcoded dark spinner box here was the
+  // flash users saw between splash and app.
+  if (!ready) return null;
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
-
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#0a0e27",
-  },
-});
 
 export function useLanguage() {
   return useContext(LanguageContext);

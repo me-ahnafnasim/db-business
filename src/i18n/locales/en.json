@@ -122,7 +122,14 @@
     "tierTitle": "Buy more, pay less",
     "tierRow": "{{count}} dozen or more",
     "tierApplied": "Applied",
-    "selectionMax": "{{selected}} of {{max}} max"
+    "selectionMax": "{{selected}} of {{max}} max",
+    "filterAll": "All",
+    "filterAllPrices": "All prices",
+    "bandLow": "Low",
+    "bandMedium": "Medium",
+    "bandHigh": "High",
+    "filterSummary": "{{count}} products",
+    "moreProducts": "More products ({{count}})"
   },
   "search": {
     "title": "Search",

@@ -23,13 +23,23 @@ function byteLength(value) {
   return Buffer.byteLength(value, "utf8");
 }
 
+// UTF-8 size from code point arithmetic. The split below used to call Buffer.byteLength
+// once per character — ~3,000 calls for a chunked session value, paid on every token
+// refresh — for a number four comparisons can produce.
+function utf8SizeOf(codePoint) {
+  if (codePoint <= 0x7f) return 1;
+  if (codePoint <= 0x7ff) return 2;
+  if (codePoint <= 0xffff) return 3;
+  return 4;
+}
+
 // Splits on BYTE budget while never cutting a character in half.
 function splitByBytes(value, limit) {
   const parts = [];
   let current = "";
   let currentBytes = 0;
   for (const char of value) {
-    const size = Buffer.byteLength(char, "utf8");
+    const size = utf8SizeOf(char.codePointAt(0));
     if (currentBytes + size > limit) {
       parts.push(current);
       current = "";
@@ -71,14 +81,14 @@ function getStorage() {
 
         if (stored !== null && stored.startsWith(CHUNK_HEADER)) {
           const count = Number(stored.slice(CHUNK_HEADER.length));
-          const parts = [];
-          for (let index = 0; index < count; index += 1) {
-            const part = await SecureStore.getItemAsync(chunkKey(key, index));
-            // A missing chunk means a half-written value; treat the whole thing as absent
-            // rather than handing back a truncated session that will fail to parse.
-            if (part === null) return null;
-            parts.push(part);
-          }
+          // The header names the count up front, so nothing forces these reads to queue
+          // behind one another.
+          const parts = await Promise.all(
+            Array.from({ length: count }, (_, index) => SecureStore.getItemAsync(chunkKey(key, index)))
+          );
+          // A missing chunk means a half-written value; treat the whole thing as absent
+          // rather than handing back a truncated session that will fail to parse.
+          if (parts.some((part) => part === null)) return null;
           return parts.join("");
         }
 
@@ -103,9 +113,11 @@ function getStorage() {
           await SecureStore.setItemAsync(key, value);
         } else {
           const parts = splitByBytes(value, CHUNK_LIMIT);
-          for (let index = 0; index < parts.length; index += 1) {
-            await SecureStore.setItemAsync(chunkKey(key, index), parts[index]);
-          }
+          // Chunk order is carried by the key suffix, not by write order, so these can go
+          // out together.
+          await Promise.all(
+            parts.map((part, index) => SecureStore.setItemAsync(chunkKey(key, index), part))
+          );
           // Header written last, so an interrupted write leaves no header and the read path
           // sees the key as absent rather than as a value with missing chunks.
           await SecureStore.setItemAsync(key, `${CHUNK_HEADER}${parts.length}`);

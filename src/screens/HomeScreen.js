@@ -76,18 +76,32 @@ export default function HomeScreen({
   // grounds that ticking is deliberate — true, but it left nothing stopping 40 ticked
   // products from mounting 40 cards on a screen that does not virtualise. View All on each
   // rail reaches the rest.
+  // How many each rail previews, set by the admin. `?? HOME_RAIL_LIMIT` is a compatibility
+  // fallback, not a default: a build newer than the server it talks to gets no limits at all,
+  // and six is what every rail used before this was configurable.
+  //
+  // 0 is a real value and means the admin hid that rail, so it must survive `??` — which is why
+  // this reads the three keys individually rather than defaulting the whole object.
+  // On `storefront`, not `catalog`: the limits come from the public storefront payload
+  // alongside the carousel slides, and storefrontForNow in MainTabs passes them through
+  // untouched (it only ever nulls an expired campaign).
+  const limits = storefront?.homeSectionLimits ?? {};
+  const featuredLimit = limits.featured ?? HOME_RAIL_LIMIT;
+  const newArrivalsLimit = limits.newArrivals ?? HOME_RAIL_LIMIT;
+  const popularLimit = limits.popular ?? HOME_RAIL_LIMIT;
+
   const featuredProducts = useMemo(
-    () => (catalog.featuredProducts ?? []).slice(0, HOME_RAIL_LIMIT),
-    [catalog.featuredProducts]
+    () => (catalog.featuredProducts ?? []).slice(0, featuredLimit),
+    [catalog.featuredProducts, featuredLimit]
   );
   // Everything in neither curated rail, so an unticked product still has somewhere to appear.
   const newArrivals = useMemo(
-    () => (catalog.newArrivals ?? []).slice(0, HOME_RAIL_LIMIT),
-    [catalog.newArrivals]
+    () => (catalog.newArrivals ?? []).slice(0, newArrivalsLimit),
+    [catalog.newArrivals, newArrivalsLimit]
   );
   const popularProducts = useMemo(
-    () => (catalog.popularProducts ?? []).slice(0, HOME_RAIL_LIMIT),
-    [catalog.popularProducts]
+    () => (catalog.popularProducts ?? []).slice(0, popularLimit),
+    [catalog.popularProducts, popularLimit]
   );
   const hasProducts = useMemo(
     () => flattenProducts(catalog.categories).length > 0,
@@ -118,7 +132,7 @@ export default function HomeScreen({
           <>
             {featuredProducts.length ? (
               <>
-                <CatalogSectionHeader title={t("home.featured")} onPress={() => onViewCategory?.(null)} actionLabel={t("home.viewAll")} />
+                <CatalogSectionHeader title={t("home.featured")} onPress={() => onViewCategory?.({ section: "featured" })} actionLabel={t("home.viewAll")} />
                 <View style={[styles.topRow, gridGap]}>
                   {featuredProducts.map((product, index) => (
                     <CatalogProductCard
@@ -133,7 +147,7 @@ export default function HomeScreen({
             ) : null}
             {newArrivals.length ? (
               <>
-                <CatalogSectionHeader title={t("home.newArrivals")} onPress={() => onViewCategory?.(null)} actionLabel={t("home.viewAll")} />
+                <CatalogSectionHeader title={t("home.newArrivals")} onPress={() => onViewCategory?.({ section: "new" })} actionLabel={t("home.viewAll")} />
                 <View style={[styles.grid, gridGap]}>
                   {newArrivals.map((product, index) => (
                     <CatalogProductCard key={product?.id ?? `new-${index}`} product={product} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />
@@ -146,7 +160,7 @@ export default function HomeScreen({
                 {/* Gained a View All: with an empty actionLabel this rendered no action at
                     all, which was fine when the rail showed everything ticked and misleading
                     once it shows six of forty. */}
-                <CatalogSectionHeader title={t("home.popular")} onPress={() => onViewCategory?.(null)} actionLabel={t("home.viewAll")} />
+                <CatalogSectionHeader title={t("home.popular")} onPress={() => onViewCategory?.({ section: "popular" })} actionLabel={t("home.viewAll")} />
                 <View style={[styles.grid, gridGap]}>
                   {popularProducts.map((product, index) => (
                     <CatalogProductCard key={product?.id ?? `popular-${index}`} product={product} cardWidth={grid.cardWidth} onOpenProduct={onOpenProduct} />
