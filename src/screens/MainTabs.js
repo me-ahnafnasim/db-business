@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, AppState, Linking, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { useLanguage } from "../i18n/LanguageProvider";
 import { getLocalizedError } from "../i18n/errors";
 import { supabase } from "../config/supabase";
 import { radius, spacing, useStyles, useTheme } from "../theme";
@@ -8,12 +9,12 @@ import { useBackHandler } from "../hooks/useBackHandler";
 import { useExitConfirm } from "../hooks/useExitConfirm";
 import { useNetworkStatus } from "../hooks/useNetworkStatus";
 import OfflineBanner from "../components/OfflineBanner";
-import { AppText, Button } from "../ui";
+import { AppText, Button, Dialog } from "../ui";
 import NoboSoleLoader from "../ui/NoboSoleLoader";
 
 import { TAB_KEYS } from "../data/tabs";
 import { PAYMENT_OPTIONS } from "../features/checkout/data/paymentOptions";
-import { findMethod, formatDeliveryDays, localizedName, methodPriceBdt } from "../features/checkout/utils/deliveryOptions";
+import { findMethod, formatDeliveryDays, methodLabel, methodPriceBdt } from "../features/checkout/utils/deliveryOptions";
 import {
   buildCatalog,
   fetchCatalogRaw,
@@ -120,6 +121,11 @@ function prefetchVisibleStoreImages(catalog, storefront) {
 
 export default function MainTabs({ auth, onSignIn, onSignOut }) {
   const { t } = useTranslation();
+  // Read directly, not through a ref like `t`: it is only used inside plain per-render
+  // handlers (the order-confirmation labels), never as a memo dependency, so it cannot
+  // re-create loadStore the way `t` used to. Its absence here was the "language is not
+  // defined" crash on Place order.
+  const { language } = useLanguage();
   const { colors } = useTheme();
   const styles = useStyles(getStyles);
   // Trail of visited tabs, most recent last, with Home pinned at the bottom so back always
@@ -174,18 +180,19 @@ export default function MainTabs({ auth, onSignIn, onSignOut }) {
   const tRef = useRef(t);
   tRef.current = t;
 
+  // The app's own Dialog rather than Alert.alert, for two reasons. Alert.alert is a no-op on
+  // react-native-web — a guest tapping "Add to cart" in the browser saw nothing at all — and
+  // even on Android a bare system alert is not the design: the ask is the message with the
+  // Google button directly beneath it.
+  const [signInDialogVisible, setSignInDialogVisible] = useState(false);
   const requestSignIn = useCallback(() => {
-    Alert.alert(
-      tRef.current("guest.signInRequiredTitle"),
-      tRef.current("guest.signInRequiredMessage"),
-      [
-        { text: tRef.current("common.cancel"), style: "cancel" },
-        {
-          text: tRef.current("launch.googleSignIn"),
-          onPress: () => onSignIn?.(),
-        },
-      ]
-    );
+    setSignInDialogVisible(true);
+  }, []);
+  const handleSignInFromDialog = useCallback(() => {
+    // Close first: signing in flips AppContent to the launch screen, and an open Modal
+    // surviving that unmount is exactly the kind of orphan the web platform leaves behind.
+    setSignInDialogVisible(false);
+    onSignIn?.();
   }, [onSignIn]);
 
   // Cached public content can paint immediately, but cart/profile are still fetched and every
@@ -746,7 +753,7 @@ export default function MainTabs({ auth, onSignIn, onSignOut }) {
         itemCount,
         packs: cartItems,
         total: paisaToBdt(order.grandTotalPaisa),
-        shippingMethodLabel: shippingMethod ? localizedName(shippingMethod, language) : "",
+        shippingMethodLabel: shippingMethod ? methodLabel(shippingMethod, language) : "",
         paymentMethodKey: paymentMethod?.labelKey || "status.unpaid",
         etaLabel: shippingMethod ? formatDeliveryDays(shippingMethod, language, t) : "",
         status: order.status,
@@ -984,6 +991,28 @@ export default function MainTabs({ auth, onSignIn, onSignOut }) {
           </AppText>
         </View>
       ) : null}
+      {/* Guest sign-in prompt: shown whenever a guest reaches an action that needs an
+          account (cart tab, add to cart, checkout, orders). One dialog serves every gate. */}
+      <Dialog
+        visible={signInDialogVisible}
+        onDismiss={() => setSignInDialogVisible(false)}
+        accessibilityLabel={`${t("guest.signInRequiredTitle")} ${t("guest.signInRequiredMessage")}`}
+      >
+        <AppText variant="h2" style={styles.signInDialogTitle}>
+          {t("guest.signInRequiredTitle")}
+        </AppText>
+        <AppText variant="body" tone="secondary" style={styles.signInDialogBody}>
+          {t("guest.signInRequiredMessage")}
+        </AppText>
+        <View style={styles.signInDialogActions}>
+          <Button title={t("launch.googleSignIn")} onPress={handleSignInFromDialog} />
+          <Button
+            title={t("common.cancel")}
+            onPress={() => setSignInDialogVisible(false)}
+            variant="secondary"
+          />
+        </View>
+      </Dialog>
     </View>
   );
 }
@@ -1041,5 +1070,14 @@ const getStyles = (colors) =>
     errorBannerText: {
       textAlign: "center",
       fontWeight: "600",
+    },
+    signInDialogTitle: {
+      marginBottom: spacing.md,
+    },
+    signInDialogBody: {
+      marginBottom: spacing.xxl,
+    },
+    signInDialogActions: {
+      gap: spacing.md,
     },
   });

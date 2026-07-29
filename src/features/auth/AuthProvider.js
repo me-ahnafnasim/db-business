@@ -80,6 +80,16 @@ export function AuthProvider({ children }) {
     []
   );
 
+  // Signing in is an explicit statement that this person is not a guest, so the sticky
+  // preference is cleared on every successful sign-in and restore. Without this, one tap of
+  // "continue as guest" ever meant every later sign-out or failed restore silently demoted a
+  // signed-in user to guest — no launch screen, no error, just "Sign in with Google to place
+  // an order." on a account they believed was logged in.
+  const clearGuestPreference = useCallback(() => {
+    guestPreferredRef.current = false;
+    AsyncStorage.removeItem(GUEST_PREFERENCE_KEY).catch(() => {});
+  }, []);
+
   const restoreSession = useCallback(async () => {
     setStatus(AUTH_STATUS.RESTORING);
     setError(null);
@@ -99,15 +109,27 @@ export function AuthProvider({ children }) {
       }
 
       const account = await bootstrapAuth();
+      clearGuestPreference();
       setUser(userFromBootstrap(account, data.session.user));
       setStatus(AUTH_STATUS.SIGNED_IN);
     } catch (restoreError) {
+      // A transient failure is not a reason to destroy a valid session. bootstrapAuth on a
+      // flaky cold start used to sign the user out locally and — with the guest preference
+      // set — drop them straight into guest mode with no indication anything went wrong.
+      // Keep the session, surface the error, and let the launch screen's retry run
+      // restoreSession again.
+      if (["NETWORK_ERROR", "REQUEST_TIMEOUT"].includes(restoreError?.code)) {
+        setUser(null);
+        setError(getAuthErrorMessage(restoreError));
+        setStatus(AUTH_STATUS.SIGNED_OUT);
+        return;
+      }
       await supabase.auth.signOut({ scope: "local" });
       setUser(null);
       setError(getAuthErrorMessage(restoreError));
       setStatus(signedOutStatus());
     }
-  }, [signedOutStatus]);
+  }, [clearGuestPreference, signedOutStatus]);
 
   useEffect(() => {
     const uninstallAutoRefresh = installAuthAutoRefresh();
@@ -148,6 +170,7 @@ export function AuthProvider({ children }) {
       if (providerResult.redirecting) return;
 
       const account = await bootstrapAuth();
+      clearGuestPreference();
       setUser(userFromBootstrap(account, providerResult.user));
       setStatus(AUTH_STATUS.SIGNED_IN);
     } catch (signInError) {
@@ -156,7 +179,7 @@ export function AuthProvider({ children }) {
       setError(getAuthErrorMessage(signInError));
       setStatus(signedOutStatus());
     }
-  }, [signedOutStatus, status]);
+  }, [clearGuestPreference, signedOutStatus, status]);
 
   const signOut = useCallback(async () => {
     setStatus(AUTH_STATUS.SIGNING_OUT);

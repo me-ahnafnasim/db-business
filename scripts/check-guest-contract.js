@@ -32,12 +32,15 @@ async function run() {
   let sessionReads = 0;
   const requests = [];
   let nextResponse = null;
+  // Toggled per scenario: the missing-route behaviour is different for a signed-in session
+  // (fall back to the authenticated route) and a guest (surface the guest error).
+  let sessionToken = 'private-token';
   const supabase = {
     auth: {
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
       getSession: async () => {
         sessionReads += 1;
-        return { data: { session: { access_token: 'private-token' } }, error: null };
+        return { data: { session: sessionToken ? { access_token: sessionToken } : null }, error: null };
       },
       refreshSession: async () => ({ data: {}, error: new Error('not expected') }),
       signOut: async () => {},
@@ -85,7 +88,11 @@ async function run() {
       requests[3].options.headers.Authorization === 'Bearer private-token'
     );
 
-    nextResponse = {
+    // Scenario: the /public projection is missing on the deployed server, but a signed-in
+    // session exists. The app must fall back to the authenticated route rather than showing
+    // the guest error to a signed-in user — this exact gap is how logged-in users were told
+    // to "Sign in with Google to place an order."
+    const missing404 = () => ({
       ok: false,
       status: 404,
       headers: { get: () => null },
@@ -94,10 +101,41 @@ async function run() {
         error: { code: 'NOT_FOUND', message: 'Endpoint not found.' },
         meta: { requestId: 'request-guest-route' },
       }),
-    };
+    });
+    nextResponse = missing404();
+    const requestCountBefore = requests.length;
+    await api.getStorefront();
+    const fallbackRequest = requests[requests.length - 1];
+    check(
+      'signed-in user falls back to the authenticated route when /public is missing',
+      requests.length === requestCountBefore + 2
+      && fallbackRequest.url.endsWith('/storefront')
+      && !fallbackRequest.url.includes('/public/')
+      && fallbackRequest.options.headers.Authorization === 'Bearer private-token'
+    );
+
+    // Scenario: a true guest (no session) against the same missing route. Only they see the
+    // guest-unavailable error — and it must not demand sign-in, because browsing does not
+    // require an account and signing in would not deploy the missing route. A fresh module
+    // instance, because api.js caches the access token in module state and this process just
+    // ran the signed-in scenario.
+    const guestApi = loadModule('src/services/api.js', {
+      '../config/env': { env: { apiUrl: 'https://api.example/api/v1' } },
+      '../config/supabase': {
+        supabase: {
+          auth: {
+            onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
+            getSession: async () => ({ data: { session: null }, error: null }),
+            refreshSession: async () => ({ data: {}, error: new Error('not expected') }),
+            signOut: async () => {},
+          },
+        },
+      },
+    });
+    nextResponse = missing404();
     let missingRouteError;
     try {
-      await api.getStorefront();
+      await guestApi.getStorefront();
     } catch (error) {
       missingRouteError = error;
     }
@@ -137,6 +175,17 @@ async function run() {
       tabsSource.includes('const showGuestSignIn = !auth?.isSignedIn')
       && tabsSource.includes('showGuestSignIn ? t("launch.googleSignIn")')
     );
+
+    const localeEn = JSON.parse(fs.readFileSync(path.join(root, 'src/i18n/locales/en.json'), 'utf8'));
+    check(
+      'the guest-unavailable message does not demand sign-in',
+      !/sign in/i.test(localeEn.errors.guestCatalogUnavailable)
+    );
+    check(
+      'the guest sign-in prompt is a Dialog, not Alert.alert (a web no-op)',
+      !/requestSignIn = useCallback\(\(\) => \{\s*Alert\.alert/.test(tabsSource)
+      && tabsSource.includes('setSignInDialogVisible(true)')
+    );
   } finally {
     global.fetch = originalFetch;
   }
@@ -145,7 +194,7 @@ async function run() {
     failures.forEach((failure) => console.error(`Guest contract failed: ${failure}`));
     process.exit(1);
   }
-  console.log('Guest security contract passed (17 checks).');
+  console.log('Guest security contract passed (20 checks).');
 }
 
 run().catch((error) => {

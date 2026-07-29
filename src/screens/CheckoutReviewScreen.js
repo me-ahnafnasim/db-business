@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { localizedName } from "../features/checkout/utils/deliveryOptions";
+import { methodLabel } from "../features/checkout/utils/deliveryOptions";
 
 import StackScreenShell from "../components/StackScreenShell";
 import CheckoutSummaryCard from "../features/checkout/components/CheckoutSummaryCard";
@@ -73,7 +73,7 @@ export default function CheckoutReviewScreen({
       </Card>
       <CheckoutSummaryCard
         rows={[
-          { label: t("checkout.shipping"), value: shippingMethod ? localizedName(shippingMethod, language) : "" },
+          { label: t("checkout.shipping"), value: shippingMethod ? methodLabel(shippingMethod, language) : "" },
           { label: t("checkout.payment"), value: paymentMethod ? t(paymentMethod.labelKey) : "" },
           { label: t("cart.subtotal"), value: formatBdt(totals.subtotal, language) },
           { label: t("checkout.shippingCost"), value: formatBdt(totals.shippingCost, language) },

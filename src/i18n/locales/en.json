@@ -397,7 +397,7 @@
     "network": "Cannot reach the server. Check your internet connection.",
     "timeout": "The server took too long to respond.",
     "invalidResponse": "The server sent a response the app could not read. Please try again.",
-    "guestCatalogUnavailable": "Sign in with Google to place an order.",
+    "guestCatalogUnavailable": "Guest browsing is temporarily unavailable. Please try again in a moment.",
     "configuration": "This app build is missing required configuration.",
     "session": "Could not read your sign-in session.",
     "sessionExpired": "Your session has expired. Sign in again.",

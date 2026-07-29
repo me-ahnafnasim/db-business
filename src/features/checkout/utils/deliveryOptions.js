@@ -1,4 +1,5 @@
 import { formatNumber, paisaToBdt } from "../../../utils/money";
+import { getDeliveryType } from "./deliveryTypes";
 
 // Delivery options come from the dashboard now, not a hardcoded array.
 //
@@ -28,13 +29,18 @@ export function selectableCouriers(couriers) {
   return (couriers || []).filter((courier) => (courier.methods || []).length > 0);
 }
 
-// "3-5 business days" / "৩-৫ কার্যদিবস", from the same two numbers. formatNumber gives Bengali
-// numerals in bn, which is why the values are formatted before interpolation rather than left
-// to i18next.
+// "3-5 business days" / "৩-৫ কার্যদিবস", derived from the method's TYPE rather than from
+// per-row day columns. Standard is 3-5 everywhere, so the server stopped sending it.
+//
+// formatNumber gives Bengali numerals in bn, which is why the values are formatted before
+// interpolation rather than left to i18next.
 export function formatDeliveryDays(method, language, t) {
-  if (!method) return "";
-  const min = Number(method.minDays ?? 0);
-  const max = Number(method.maxDays ?? min);
+  const type = getDeliveryType(method?.code);
+  // A type this build does not know — an older row, or one added after this APK shipped. Show
+  // no delivery time rather than "undefined-undefined business days".
+  if (!type) return "";
+
+  const { minDays: min, maxDays: max } = type;
   // Two explicit keys rather than i18next plural suffixes: nothing else in this app uses them
   // and the translation checker does not recognise them.
   if (max <= min) {
@@ -53,6 +59,15 @@ export function localizedName(entity, language) {
   if (!entity) return "";
   if (language === "bn") return entity.nameBn?.trim() || entity.name;
   return entity.name;
+}
+
+// A delivery method's label comes from its type, not from the row — the server no longer sends
+// a name because "Express" is called that for every courier. Falls back to the raw code so an
+// unrecognised type is still selectable rather than rendering as a blank row.
+export function methodLabel(method, language) {
+  const type = getDeliveryType(method?.code);
+  if (!type) return method?.code || "";
+  return localizedName(type, language);
 }
 
 export function methodPriceBdt(method) {

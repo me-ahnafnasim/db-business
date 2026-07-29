@@ -7,6 +7,7 @@ import ShippingAddressForm from "../features/checkout/components/ShippingAddress
 import ShippingOptionCard from "../features/checkout/components/ShippingOptionCard";
 import CheckoutSummaryCard from "../features/checkout/components/CheckoutSummaryCard";
 import { findMethod, localizedName, selectableCouriers } from "../features/checkout/utils/deliveryOptions";
+import { typeRequiresAddress } from "../features/checkout/utils/deliveryTypes";
 import { getCheckoutTotals } from "../features/checkout/utils/checkoutPricing";
 import { spacing, useStyles } from "../theme";
 import { AppText, Button, SelectionCard } from "../ui";
@@ -58,7 +59,10 @@ export default function ShippingScreen({
   const addressFields = Object.values(shippingAddress);
   const addressFilled = addressFields.every(Boolean);
   const phoneValid = !shippingAddress.phone || BD_PHONE_RE.test(shippingAddress.phone);
-  const addressValid = !currentMethod?.requiresAddress || (addressFilled && phoneValid);
+  // Whether an address is needed is a property of the type, not of the row — pickup never
+  // needs one, delivery always does. Defaults to requiring an address for an unknown type.
+  const needsAddress = Boolean(currentMethod) && typeRequiresAddress(currentMethod.code);
+  const addressValid = !needsAddress || (addressFilled && phoneValid);
   const canContinue = Boolean(currentMethod && addressValid);
 
   const selectSaved = () => {
@@ -119,7 +123,7 @@ export default function ShippingScreen({
           ) : null}
         </>
       )}
-      {currentMethod?.requiresAddress ? (
+      {needsAddress ? (
         hasSaved ? (
           <>
             <SelectionCard

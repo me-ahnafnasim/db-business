@@ -142,6 +142,15 @@ async function request(method, path, body = null, requestOptions = {}) {
       data?.error?.code === 'NOT_FOUND' &&
       data?.error?.message === 'Endpoint not found.';
     if (publicRouteMissing) {
+      // A signed-in user does not have to care that the /public projection is missing — the
+      // authenticated equivalents predate it and exist on every deployed server. Retry once
+      // there before giving up, so the app and the server can deploy in either order without
+      // signed-in users losing the catalog. `fallbackPath` is set only by the public catalog
+      // helpers below; the recursion strips it, so this cannot loop.
+      if (requestOptions.fallbackPath && (await getAccessToken())) {
+        const { fallbackPath, ...rest } = requestOptions;
+        return request(method, fallbackPath, body, { ...rest, auth: true });
+      }
       throw new ApiError(
         'Guest browsing is temporarily unavailable while the app service is being updated.',
         {
@@ -213,15 +222,24 @@ export async function getUnions(thanaId) {
 // Products
 export async function getProducts(params = {}) {
   const query = new URLSearchParams(params).toString();
-  return request('GET', `/public/products?${query}`, null, { auth: false });
+  return request('GET', `/public/products?${query}`, null, {
+    auth: false,
+    fallbackPath: `/products?${query}`,
+  });
 }
 
 export async function getProduct(id) {
-  return request('GET', `/public/products/${id}`, null, { auth: false });
+  return request('GET', `/public/products/${id}`, null, {
+    auth: false,
+    fallbackPath: `/products/${id}`,
+  });
 }
 
 export async function getStorefront() {
-  return request('GET', '/public/storefront', null, { auth: false });
+  return request('GET', '/public/storefront', null, {
+    auth: false,
+    fallbackPath: '/storefront',
+  });
 }
 
 // Cart

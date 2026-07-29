@@ -48,7 +48,8 @@ function translator(language) {
 }
 
 const {
-  findCourier, findMethod, selectableCouriers, formatDeliveryDays, localizedName, methodPriceBdt,
+  findCourier, findMethod, selectableCouriers, formatDeliveryDays, localizedName, methodLabel,
+  methodPriceBdt,
 } = loadModule('src/features/checkout/utils/deliveryOptions.js');
 
 const failures = [];
@@ -65,17 +66,18 @@ const redx = {
   name: 'RedX',
   nameBn: 'রেডএক্স',
   methods: [
-    { id: 11, code: 'STANDARD', name: 'Standard', nameBn: 'সাধারণ', minDays: 3, maxDays: 5, pricePaisa: 6000, requiresAddress: true },
-    { id: 12, code: 'EXPRESS', name: 'Express', nameBn: 'এক্সপ্রেস', minDays: 1, maxDays: 2, pricePaisa: 15000, requiresAddress: true },
+    { id: 11, code: 'STANDARD', pricePaisa: 6000 },
+    { id: 12, code: 'EXPRESS', pricePaisa: 15000 },
   ],
 };
 const pathao = {
   id: 2,
   name: 'Pathao',
-  // No Bangla name on purpose — the fallback path has to be exercised.
+  // No Bangla name on purpose — the courier fallback path has to be exercised.
   methods: [
-    { id: 21, code: 'SAME_DAY', name: 'Same day', minDays: 1, maxDays: 1, pricePaisa: 25000, requiresAddress: true },
-    { id: 22, code: 'PICKUP', name: 'Pickup', nameBn: 'নিজে সংগ্রহ', minDays: 0, maxDays: 0, pricePaisa: 0, requiresAddress: false },
+    // A code this build does not know: an older row, or a type added after the APK shipped.
+    { id: 21, code: 'SAME_DAY', pricePaisa: 25000 },
+    { id: 22, code: 'PICKUP', pricePaisa: 0 },
   ],
 };
 const emptyCourier = { id: 3, name: 'Sundarban', methods: [] };
@@ -103,27 +105,43 @@ check('free method is 0', methodPriceBdt(pathao.methods[1]), 0);
 check('missing method is 0', methodPriceBdt(null), 0);
 
 // ---- names -------------------------------------------------------------------------------
-check('English name in en', localizedName(redx, 'en'), 'RedX');
-check('Bangla name in bn', localizedName(redx, 'bn'), 'রেডএক্স');
-check('falls back to English when no Bangla', localizedName(pathao, 'bn'), 'Pathao');
+check('courier name in en', localizedName(redx, 'en'), 'RedX');
+check('courier name in bn', localizedName(redx, 'bn'), 'রেডএক্স');
+check('courier falls back to English when no Bangla', localizedName(pathao, 'bn'), 'Pathao');
 check('blank Bangla also falls back', localizedName({ name: 'X', nameBn: '   ' }, 'bn'), 'X');
 check('missing entity', localizedName(null, 'en'), '');
+
+// A method's label comes from its TYPE — the server no longer sends a name, because Express is
+// called Express for every courier.
+check('method label in en', methodLabel(redx.methods[1], 'en'), 'Express');
+check('method label in bn', methodLabel(redx.methods[1], 'bn'), 'এক্সপ্রেস');
+check('pickup label in bn', methodLabel(pathao.methods[1], 'bn'), 'নিজে সংগ্রহ');
+// Unknown type: show the raw code rather than a blank row.
+check('unknown type falls back to its code', methodLabel(pathao.methods[0], 'en'), 'SAME_DAY');
+check('missing method label', methodLabel(null, 'en'), '');
 
 // ---- delivery time -----------------------------------------------------------------------
 const ten = translator('en');
 const tbn = translator('bn');
 
-check('en range', formatDeliveryDays(redx.methods[0], 'en', ten), '3-5 business days');
-check('en single day', formatDeliveryDays({ minDays: 1, maxDays: 1 }, 'en', ten), '1 business day');
-check('en exact plural', formatDeliveryDays({ minDays: 2, maxDays: 2 }, 'en', ten), '2 business days');
+check('en range comes from the STANDARD type', formatDeliveryDays(redx.methods[0], 'en', ten), '3-5 business days');
+check('en range comes from the EXPRESS type', formatDeliveryDays(redx.methods[1], 'en', ten), '1-2 business days');
+check('pickup collapses to the exact form', formatDeliveryDays(pathao.methods[1], 'en', ten), '0 business days');
 // Bengali numerals come from formatNumber, which is why the values are formatted before
 // interpolation rather than handed to i18next as raw numbers.
 check('bn range uses Bengali numerals', formatDeliveryDays(redx.methods[0], 'bn', tbn), '৩-৫ কার্যদিবস');
-check('bn single day', formatDeliveryDays({ minDays: 1, maxDays: 1 }, 'bn', tbn), '১ কার্যদিবস');
+check('bn express range', formatDeliveryDays(redx.methods[1], 'bn', tbn), '১-২ কার্যদিবস');
 check('missing method renders nothing', formatDeliveryDays(null, 'en', ten), '');
-// max below min would otherwise print a backwards range; the server rejects it, and this
-// collapses it rather than showing "5-2".
-check('max below min collapses to the single-day form', formatDeliveryDays({ minDays: 5, maxDays: 2 }, 'en', ten), '5 business days');
+// An unrecognised type must show no delivery time rather than "undefined-undefined".
+check('unknown type renders no day text', formatDeliveryDays(pathao.methods[0], 'en', ten), '');
+
+// ---- address requirement -----------------------------------------------------------------
+const { typeRequiresAddress } = loadModule('src/features/checkout/utils/deliveryTypes.js');
+check('delivery needs an address', typeRequiresAddress('STANDARD'), true);
+check('express needs an address', typeRequiresAddress('EXPRESS'), true);
+check('pickup does not', typeRequiresAddress('PICKUP'), false);
+// Safer to ask for an address nobody needed than to ship to nowhere.
+check('unknown type defaults to requiring one', typeRequiresAddress('SAME_DAY'), true);
 
 // ---- the subtotal a buyer actually sees ---------------------------------------------------
 const { getCheckoutTotals } = loadModule('src/features/checkout/utils/checkoutPricing.js');

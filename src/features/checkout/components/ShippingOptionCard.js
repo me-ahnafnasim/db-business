@@ -5,14 +5,14 @@ import { useTranslation } from "react-i18next";
 import { useLanguage } from "../../../i18n/LanguageProvider";
 import { AppText, SelectionCard } from "../../../ui";
 import { formatBdt } from "../../../utils/money";
-import { formatDeliveryDays, localizedName, methodPriceBdt } from "../utils/deliveryOptions";
+import { formatDeliveryDays, methodLabel, methodPriceBdt } from "../utils/deliveryOptions";
 
 // One delivery method belonging to the selected courier.
 //
-// Both the label and the delivery time used to come from translation keys, because the three
-// options were hardcoded in the app. They are admin-managed now, so the name comes off the row
-// (Bangla falling back to English) and the time is rendered from min/max days rather than a
-// stored sentence.
+// The server sends only a type code and a price. The label and the delivery time are derived
+// from that code, because they are identical for every courier — "Express" is called Express
+// and takes 1-2 days whoever carries it. Only the price varies, which is why only the price
+// travels.
 function ShippingOptionCard({ method, selected, onPress }) {
   const { language } = useLanguage();
   const { t } = useTranslation();
@@ -22,7 +22,7 @@ function ShippingOptionCard({ method, selected, onPress }) {
     <SelectionCard
       selected={selected}
       onPress={onPress}
-      title={localizedName(method, language)}
+      title={methodLabel(method, language)}
       description={formatDeliveryDays(method, language, t)}
       trailing={
         <AppText variant="bodyStrong">
