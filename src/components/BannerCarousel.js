@@ -138,6 +138,10 @@ export default function BannerCarousel({ slides, active = true }) {
         extrapolate: "clamp",
       });
 
+      // Both are optional: a slide may be artwork alone. Nothing below renders when this is
+      // false — not the text, and not the scrim that exists to make the text readable.
+      const hasText = Boolean(item.title || item.subtitle);
+
       const content = (showIcon) => (
         <Animated.View style={[styles.bannerContent, { transform: [{ translateY }] }]}>
           {showIcon ? (
@@ -197,11 +201,19 @@ export default function BannerCarousel({ slides, active = true }) {
                   transition={120}
                   style={styles.backgroundImage}
                 />
-                {/* Starts at 0.35 rather than the top, so the fade is confined to the lower
+                {/* The scrim exists to keep the overlay legible, so a slide carrying neither a
+                    title nor a subtitle does not get one — dimming the lower two-thirds of
+                    artwork that has nothing written on it is the opposite of what an
+                    image-only banner is for. Both fields are optional on the server, and an
+                    admin whose lettering is drawn into the image leaves them blank.
+
+                    Starts at 0.35 rather than the top, so the fade is confined to the lower
                     two-thirds and the photograph reads clean above it. */}
-                <LinearGradient colors={IMAGE_SCRIM} start={{ x: 0.5, y: 0.35 }} end={{ x: 0.5, y: 1 }} style={styles.gradient}>
-                  {content(false)}
-                </LinearGradient>
+                {hasText ? (
+                  <LinearGradient colors={IMAGE_SCRIM} start={{ x: 0.5, y: 0.35 }} end={{ x: 0.5, y: 1 }} style={styles.gradient}>
+                    {content(false)}
+                  </LinearGradient>
+                ) : null}
               </View>
             ) : (
               <LinearGradient colors={item.colors || FALLBACK_GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
