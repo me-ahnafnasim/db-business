@@ -59,7 +59,11 @@ function CartLineItem({ item, onEdit, onRemove }) {
             <AppText numberOfLines={1} variant="bodyStrong">
               {formatBdt((item.discountedUnitPrice ?? item.unitPrice ?? item.price) * item.quantity, language)}
             </AppText>
-            {item.discountPercent ? (
+            {/* Struck through whenever the line is discounted for ANY reason. A quantity tier
+                deliberately carries discountPercent 0 (the festival must not double-draw), so
+                gating on the percent alone hid the tier's saving — the line showed the lower
+                figure with nothing explaining it, and a right number read as a wrong one. */}
+            {item.appliedTier || item.discountPercent ? (
               <AppText numberOfLines={1} variant="caption" tone="secondary" style={styles.originalPrice}>
                 {formatBdt((item.unitPrice ?? item.price) * item.quantity, language)}
               </AppText>

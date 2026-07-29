@@ -13,7 +13,11 @@
 // is set by the server on each cart line, which is what makes that decision consistent between
 // what is displayed and what is charged.
 
-function effectiveUnitPrice(item) {
+// Exported because every screen that prints a per-line figure must price it exactly the way
+// the subtotal does. The review screen once used the base price here while the subtotal used
+// the tier price, so with a tier applied an item read ৳9,000 above a ৳7,650 subtotal and a
+// ৳0 discount row — a correct total that looked miscalculated.
+export function effectiveUnitPrice(item) {
   if (item.appliedTier) return item.discountedUnitPrice ?? item.unitPrice ?? item.price;
   return item.unitPrice ?? item.price;
 }

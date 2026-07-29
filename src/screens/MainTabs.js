@@ -854,6 +854,7 @@ export default function MainTabs({ auth, onSignIn, onSignOut }) {
           <ShippingScreen
             cartItems={cartItems}
             appliedCoupon={appliedCoupon}
+            festivalCampaign={storefront.activeFestivalDiscount}
             couriers={couriers}
             courierId={courierId}
             shippingMethod={shippingMethodId}

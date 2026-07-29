@@ -170,6 +170,39 @@ check('total adds delivery', withExpress.total, 25150);
 const withPickup = getCheckoutTotals({ cartItems: cart, shippingCost: methodPriceBdt(pathao.methods[1]) });
 check('a free method adds nothing', withPickup.total, 25000);
 
+// ---- every displayed line must sum to the displayed subtotal ------------------------------
+// The review screen once priced its item lines at the base price while the subtotal used the
+// tier price, so a tiered order showed ৳9,000 above a ৳7,650 subtotal and a ৳0 discount row.
+// These pin the invariant: Σ effectiveUnitPrice(item) × qty === getCartSubtotal(items), for a
+// tiered line, a festival line and a plain line together.
+const { effectiveUnitPrice, getCartSubtotal, getDiscountAmount } = loadModule('src/features/checkout/utils/checkoutPricing.js');
+const mixedCart = [
+  // Tiered: base 1500, 5-dozen tier 1275, 6 dozen. discountPercent 0 by design.
+  { unitPrice: 1500, discountedUnitPrice: 1275, discountPercent: 0, appliedTier: { minQuantityDozen: 5 }, quantity: 6 },
+  // Festival-only: base 1000; the line shows gross and the campaign is a separate row.
+  { unitPrice: 1000, discountedUnitPrice: 900, discountPercent: 10, appliedTier: null, quantity: 2 },
+  // Plain.
+  { unitPrice: 500, discountedUnitPrice: 500, discountPercent: 0, appliedTier: null, quantity: 1 },
+];
+const shownLines = mixedCart.map((item) => effectiveUnitPrice(item) * item.quantity);
+check('tiered line displays the tier price', shownLines[0], 6 * 1275);
+check('festival line displays gross (campaign is its own row)', shownLines[1], 2 * 1000);
+check(
+  'displayed lines sum to the displayed subtotal',
+  shownLines.reduce((sum, value) => sum + value, 0),
+  getCartSubtotal(mixedCart)
+);
+const campaign = { discountPercent: 10 };
+check('festival discounts only the untiered lines', getDiscountAmount(mixedCart, campaign), (2 * 1000 + 1 * 500) * 0.1);
+const withCampaign = getCheckoutTotals({ cartItems: mixedCart, shippingCost: 0, festivalCampaign: campaign });
+const withoutCampaign = getCheckoutTotals({ cartItems: mixedCart, shippingCost: 0 });
+check(
+  'campaign changes the total by exactly the festival amount',
+  withoutCampaign.total - withCampaign.total,
+  getDiscountAmount(mixedCart, campaign)
+);
+check('tiered subtotal is identical with and without the campaign', withCampaign.subtotal, withoutCampaign.subtotal);
+
 if (failures.length) {
   console.error(`\nDelivery options FAILED — ${failures.length} of ${checks} checks\n`);
   for (const failure of failures) console.error(`  ✗ ${failure}`);

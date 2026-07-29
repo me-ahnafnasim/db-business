@@ -23,6 +23,7 @@ const VISIBLE_COURIERS = 4;
 export default function ShippingScreen({
   cartItems,
   appliedCoupon,
+  festivalCampaign,
   couriers,
   courierId,
   shippingMethod,
@@ -51,9 +52,12 @@ export default function ShippingScreen({
       // Shown to the buyer before they order; the server re-reads the same row and charges
       // from it, so this is a preview of an authoritative number rather than the number itself.
       shippingCost: methodPriceBdt(currentMethod),
-      appliedCoupon,
+      // Without this, a live campaign showed discount ৳0 on this step and the real discount
+      // one step later on Review — the total changed between checkout pages. (The old call
+      // passed `appliedCoupon` instead, a parameter getCheckoutTotals has never had.)
+      festivalCampaign,
     }),
-    [appliedCoupon, cartItems, currentMethod]
+    [cartItems, currentMethod, festivalCampaign]
   );
 
   // Measured from the bottom edge of the fourth card, so the box ends exactly where the fourth

@@ -1,6 +1,7 @@
 import { StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { methodLabel } from "../features/checkout/utils/deliveryOptions";
+import { effectiveUnitPrice } from "../features/checkout/utils/checkoutPricing";
 
 import StackScreenShell from "../components/StackScreenShell";
 import CheckoutSummaryCard from "../features/checkout/components/CheckoutSummaryCard";
@@ -66,7 +67,10 @@ export default function CheckoutReviewScreen({
               ))}
             </View>
             <AppText variant="bodySm" tone="primary" style={styles.itemPrice}>
-              {formatBdt((item.unitPrice ?? item.price) * item.quantity, language)}
+              {/* The same price the subtotal below is built from — tier price when a quantity
+                  break applies, base otherwise. Priced differently, a tiered item showed the
+                  base figure above a tier-priced subtotal and the gap looked like a bug. */}
+              {formatBdt(effectiveUnitPrice(item) * item.quantity, language)}
             </AppText>
           </View>
         ))}
