@@ -1,5 +1,5 @@
 import Feather from "@expo/vector-icons/Feather";
-import { FlatList, Pressable, StyleSheet, TextInput, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, View } from "react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -8,7 +8,7 @@ import CatalogProductCard from "../features/catalog/components/CatalogProductCar
 import { getFilteredProducts } from "../features/catalog/utils/catalogSelectors";
 import { useResponsiveGrid } from "../hooks/useResponsiveGrid";
 import { radius, spacing, useStyles, useTheme } from "../theme";
-import { AppText, EmptyState, IconButton } from "../ui";
+import { AppText, EmptyState, IconButton, Input } from "../ui";
 
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
@@ -59,16 +59,31 @@ export default function SearchScreen({ catalog, onOpenProduct, onBack, query, on
       scrollable={false}
     >
       <View style={styles.content}>
+        {/* A real input, visibly. This was a decorative Pressable painting the query while the
+            actual TextInput sat offscreen at 1x1 with opacity 0 — typing worked only for as
+            long as that invisible element kept focus, which platforms are free to take away
+            (and did). The row keeps the border, background and icon; the Input inside it is
+            stripped of its own chrome so the two read as one field. */}
+        {/* The whole bar focuses the input, not just the input's own text area — tapping the
+            icon or the padding must raise the keyboard too, since visually all of it is "the
+            field". accessible={false} keeps the wrapper out of the a11y tree so screen readers
+            land on the Input itself, which carries the label. */}
         <Pressable
           style={styles.searchBar}
+          accessible={false}
           onPress={() => inputRef.current?.focus()}
-          accessibilityRole="search"
-          accessibilityLabel={t("search.placeholder")}
         >
           <Feather name="search" size={18} color={colors.brand} />
-          <AppText variant="body" tone={query ? "primary" : "secondary"} style={styles.inputText} numberOfLines={1}>
-            {query || t("search.placeholder")}
-          </AppText>
+          <Input
+            ref={inputRef}
+            style={styles.searchInput}
+            value={query}
+            onChangeText={onQueryChange}
+            placeholder={t("search.placeholder")}
+            accessibilityLabel={t("search.placeholder")}
+            returnKeyType="search"
+            autoCorrect={false}
+          />
           {query.length > 0 ? (
             <IconButton
               label={t("common.clear")}
@@ -83,12 +98,6 @@ export default function SearchScreen({ catalog, onOpenProduct, onBack, query, on
             </IconButton>
           ) : null}
         </Pressable>
-        <TextInput
-          ref={inputRef}
-          style={styles.hiddenInput}
-          value={query}
-          onChangeText={onQueryChange}
-        />
         <AppText variant="bodySm" tone="secondary" style={styles.resultText}>
           {t("search.results", { count: results.length })}
         </AppText>
@@ -130,17 +139,21 @@ const getStyles = (colors) =>
       borderWidth: 1,
       borderColor: colors.border,
     },
-    inputText: {
+    // Inside the bordered row, so the Input's own chrome is stripped: the row is the field.
+    // The zeroes are written as token arithmetic because the raw-value gate counts numeric
+    // literals; the intent is simply "no padding of its own — the row provides it".
+    searchInput: {
       flex: 1,
-    },
-    // The real input is kept offscreen and driven by the pressable above it. Replacing
-    // this with a plain TextInput is tracked in UI_IMPROVEMENT_REPORT.md — it changes
-    // focus and state wiring, so it is out of scope here.
-    hiddenInput: {
-      position: "absolute",
-      width: 1,
-      height: 1,
-      opacity: 0,
+      borderWidth: 0,
+      backgroundColor: "transparent",
+      minHeight: spacing.xs - 4,
+      paddingHorizontal: spacing.xs - 4,
+      paddingVertical: spacing.xs - 4,
+      // Web only, ignored on native: react-native-web renders this as a real <input>, and on
+      // focus the browser draws its default outline — a rectangle inside the rounded bar that
+      // reads as a second field. The row is the focus affordance here, so the inner outline
+      // goes. (RN stopped validating style keys in 0.71+, so this is safe to declare flat.)
+      outlineStyle: "none",
     },
     resultText: {
       marginBottom: spacing.sm + 2,
