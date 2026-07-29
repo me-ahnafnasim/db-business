@@ -36,11 +36,16 @@ export function selectableCouriers(couriers) {
 // interpolation rather than left to i18next.
 export function formatDeliveryDays(method, language, t) {
   const type = getDeliveryType(method?.code);
-  // A type this build does not know — an older row, or one added after this APK shipped. Show
-  // no delivery time rather than "undefined-undefined business days".
-  if (!type) return "";
 
-  const { minDays: min, maxDays: max } = type;
+  // The courier's own range wins. Delivery time is configured per courier in the dashboard —
+  // one firm's Express really is another's two-day service — and the type's range is only the
+  // default the admin starts from.
+  const min = Number.isFinite(Number(method?.minDays)) ? Number(method.minDays) : type?.minDays;
+  const max = Number.isFinite(Number(method?.maxDays)) ? Number(method.maxDays) : type?.maxDays;
+
+  // Neither a stored range nor a known type: an older row, or a type added after this APK
+  // shipped. Show no delivery time rather than "undefined-undefined business days".
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return "";
   // Two explicit keys rather than i18next plural suffixes: nothing else in this app uses them
   // and the translation checker does not recognise them.
   if (max <= min) {

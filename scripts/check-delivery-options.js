@@ -66,8 +66,11 @@ const redx = {
   name: 'RedX',
   nameBn: 'রেডএক্স',
   methods: [
-    { id: 11, code: 'STANDARD', pricePaisa: 6000 },
-    { id: 12, code: 'EXPRESS', pricePaisa: 15000 },
+    // A courier's own timings, set in the dashboard — RedX Express really is 1-2 days.
+    { id: 11, code: 'STANDARD', pricePaisa: 6000, minDays: 3, maxDays: 5 },
+    { id: 12, code: 'EXPRESS', pricePaisa: 15000, minDays: 1, maxDays: 2 },
+    // No stored range: falls back to the type's default.
+    { id: 13, code: 'STANDARD', pricePaisa: 6000 },
   ],
 };
 const pathao = {
@@ -124,16 +127,19 @@ check('missing method label', methodLabel(null, 'en'), '');
 const ten = translator('en');
 const tbn = translator('bn');
 
-check('en range comes from the STANDARD type', formatDeliveryDays(redx.methods[0], 'en', ten), '3-5 business days');
-check('en range comes from the EXPRESS type', formatDeliveryDays(redx.methods[1], 'en', ten), '1-2 business days');
+check('the courier’s own range is used', formatDeliveryDays(redx.methods[0], 'en', ten), '3-5 business days');
+check('a courier can differ from the type default', formatDeliveryDays({ code: 'EXPRESS', minDays: 2, maxDays: 4 }, 'en', ten), '2-4 business days');
+check('no stored range falls back to the type', formatDeliveryDays(redx.methods[2], 'en', ten), '3-5 business days');
 check('pickup collapses to the exact form', formatDeliveryDays(pathao.methods[1], 'en', ten), '0 business days');
 // Bengali numerals come from formatNumber, which is why the values are formatted before
 // interpolation rather than handed to i18next as raw numbers.
 check('bn range uses Bengali numerals', formatDeliveryDays(redx.methods[0], 'bn', tbn), '৩-৫ কার্যদিবস');
 check('bn express range', formatDeliveryDays(redx.methods[1], 'bn', tbn), '১-২ কার্যদিবস');
 check('missing method renders nothing', formatDeliveryDays(null, 'en', ten), '');
-// An unrecognised type must show no delivery time rather than "undefined-undefined".
-check('unknown type renders no day text', formatDeliveryDays(pathao.methods[0], 'en', ten), '');
+// An unrecognised type with no stored range: no day text rather than "undefined-undefined".
+check('unknown type with no range renders no day text', formatDeliveryDays({ code: 'MYSTERY' }, 'en', ten), '');
+// ...but one WITH a stored range still renders, because the range is what the buyer needs.
+check('unknown type with a range still renders', formatDeliveryDays({ code: 'MYSTERY', minDays: 6, maxDays: 9 }, 'en', ten), '6-9 business days');
 
 // ---- address requirement -----------------------------------------------------------------
 const { typeRequiresAddress } = loadModule('src/features/checkout/utils/deliveryTypes.js');

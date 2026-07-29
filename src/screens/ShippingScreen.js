@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import StackScreenShell from "../components/StackScreenShell";
 import ShippingAddressForm from "../features/checkout/components/ShippingAddressForm";
 import ShippingOptionCard from "../features/checkout/components/ShippingOptionCard";
+import CourierPickerCard from "../features/checkout/components/CourierPickerCard";
 import CheckoutSummaryCard from "../features/checkout/components/CheckoutSummaryCard";
-import { findMethod, localizedName, selectableCouriers } from "../features/checkout/utils/deliveryOptions";
+import { findMethod, selectableCouriers } from "../features/checkout/utils/deliveryOptions";
 import { typeRequiresAddress } from "../features/checkout/utils/deliveryTypes";
 import { getCheckoutTotals } from "../features/checkout/utils/checkoutPricing";
 import { spacing, useStyles } from "../theme";
@@ -96,17 +97,34 @@ export default function ShippingScreen({
       ) : (
         <>
           {/* Courier first, then that courier's methods: the price belongs to the pair, so a
-              method cannot be chosen until its carrier is. */}
+              method cannot be chosen until its carrier is.
+              
+              Horizontal because the list grows with the business — a vertical stack of cards
+              would push the delivery methods, the address form and the total off the screen
+              before a buyer has chosen anything. Scrolling sideways keeps the whole checkout
+              visible however many couriers are on offer. */}
           <AppText variant="label" style={styles.sectionTitle}>{t("checkout.chooseCourier")}</AppText>
-          {options.map((courier) => (
-            <SelectionCard
-              key={courier.id}
-              selected={String(courier.id) === String(courierId)}
-              onPress={() => onSelectCourier?.(courier.id)}
-              title={localizedName(courier, language)}
-              description={t("checkout.chooseCourierSubtitle")}
-            />
-          ))}
+          <AppText variant="caption" tone="secondary" style={styles.sectionNote}>
+            {t("checkout.chooseCourierSubtitle")}
+          </AppText>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.courierRow}
+            // The row sits inside the screen's vertical scroll view; without this a sideways
+            // drag that starts slightly off-axis gets claimed by the parent and the row feels
+            // stuck.
+            directionalLockEnabled
+          >
+            {options.map((courier) => (
+              <CourierPickerCard
+                key={courier.id}
+                courier={courier}
+                selected={String(courier.id) === String(courierId)}
+                onPress={() => onSelectCourier?.(courier.id)}
+              />
+            ))}
+          </ScrollView>
 
           {currentCourier ? (
             <>
@@ -189,7 +207,15 @@ const getStyles = () =>
       marginBottom: spacing.sm,
     },
     sectionNote: {
-      marginBottom: spacing.lg,
+      marginBottom: spacing.sm,
+    },
+    courierRow: {
+      flexDirection: "row",
+      gap: spacing.sm + 2,
+      // Bleeds to the screen edge so the last tile is visibly cut off rather than sitting
+      // flush, which is what tells a buyer the row scrolls at all.
+      paddingRight: spacing.xl,
+      paddingBottom: spacing.lg,
     },
     addressDetails: {
       marginTop: spacing.sm,
