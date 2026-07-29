@@ -1,13 +1,12 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import StackScreenShell from "../components/StackScreenShell";
 import ShippingAddressForm from "../features/checkout/components/ShippingAddressForm";
 import ShippingOptionCard from "../features/checkout/components/ShippingOptionCard";
-import CourierPickerCard from "../features/checkout/components/CourierPickerCard";
 import CheckoutSummaryCard from "../features/checkout/components/CheckoutSummaryCard";
-import { findMethod, selectableCouriers } from "../features/checkout/utils/deliveryOptions";
+import { findMethod, isPickup, localizedName, selectableCouriers } from "../features/checkout/utils/deliveryOptions";
 import { typeRequiresAddress } from "../features/checkout/utils/deliveryTypes";
 import { getCheckoutTotals } from "../features/checkout/utils/checkoutPricing";
 import { spacing, useStyles } from "../theme";
@@ -17,6 +16,9 @@ import { formatBdt } from "../utils/money";
 import { methodPriceBdt } from "../features/checkout/utils/deliveryOptions";
 
 const BD_PHONE_RE = /^01[3-9]\d{8}$/;
+
+// How many couriers are visible before the list starts scrolling. Pickup counts as one of them.
+const VISIBLE_COURIERS = 4;
 
 export default function ShippingScreen({
   cartItems,
@@ -53,6 +55,16 @@ export default function ShippingScreen({
     }),
     [appliedCoupon, cartItems, currentMethod]
   );
+
+  // Measured from the bottom edge of the fourth card, so the box ends exactly where the fourth
+  // one does however tall the cards happen to be. Stays null with four or fewer, which leaves
+  // the list uncapped and unscrollable.
+  const [courierListHeight, setCourierListHeight] = useState(null);
+  const measureFourthCourier = useCallback((event) => {
+    const { y, height } = event.nativeEvent.layout;
+    const bottom = y + height;
+    setCourierListHeight((current) => (current === bottom ? current : bottom));
+  }, []);
 
   const hasSaved = savedAddress && Object.values(savedAddress).some(Boolean);
   const [showNewAddress, setShowNewAddress] = useState(false);
@@ -98,35 +110,42 @@ export default function ShippingScreen({
         <>
           {/* Courier first, then that courier's methods: the price belongs to the pair, so a
               method cannot be chosen until its carrier is.
-              
-              Horizontal because the list grows with the business — a vertical stack of cards
-              would push the delivery methods, the address form and the total off the screen
-              before a buyer has chosen anything. Scrolling sideways keeps the whole checkout
-              visible however many couriers are on offer. */}
+
+              A plain vertical list of SelectionCards rather than a bespoke tile — the same
+              primitive the saved-address choice below uses, with the radio semantics and
+              selected state already handled. The screen's own scroll view carries it. */}
           <AppText variant="label" style={styles.sectionTitle}>{t("checkout.chooseCourier")}</AppText>
           <AppText variant="caption" tone="secondary" style={styles.sectionNote}>
             {t("checkout.chooseCourierSubtitle")}
           </AppText>
+          {/* Four at a time, then it scrolls. The height is measured from the fourth card
+              rather than assumed: the pickup card carries a description and the others do not,
+              so "four cards tall" is not a number that can be written down. */}
           <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.courierRow}
-            // The row sits inside the screen's vertical scroll view; without this a sideways
-            // drag that starts slightly off-axis gets claimed by the parent and the row feels
-            // stuck.
-            directionalLockEnabled
+            style={courierListHeight ? { maxHeight: courierListHeight } : undefined}
+            scrollEnabled={options.length > VISIBLE_COURIERS}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator={options.length > VISIBLE_COURIERS}
           >
-            {options.map((courier) => (
-              <CourierPickerCard
+            {options.map((courier, index) => (
+              <View
                 key={courier.id}
-                courier={courier}
-                selected={String(courier.id) === String(courierId)}
-                onPress={() => onSelectCourier?.(courier.id)}
-              />
+                onLayout={index === VISIBLE_COURIERS - 1 ? measureFourthCourier : undefined}
+              >
+                <SelectionCard
+                  selected={String(courier.id) === String(courierId)}
+                  onPress={() => onSelectCourier?.(courier.id)}
+                  title={localizedName(courier, language)}
+                  // Pickup has nothing to choose after it, so it says what it is right here.
+                  description={isPickup(courier.id) ? t("checkout.pickupDescription") : undefined}
+                />
+              </View>
             ))}
           </ScrollView>
 
-          {currentCourier ? (
+          {/* Pickup is the whole decision — there is nothing under it to pick, so the method
+              section is skipped rather than showing a one-item list. */}
+          {currentCourier && !isPickup(courierId) ? (
             <>
               <AppText variant="label" style={styles.sectionTitle}>{t("checkout.chooseMethod")}</AppText>
               {currentCourier.methods.map((method) => (
@@ -208,14 +227,6 @@ const getStyles = () =>
     },
     sectionNote: {
       marginBottom: spacing.sm,
-    },
-    courierRow: {
-      flexDirection: "row",
-      gap: spacing.sm + 2,
-      // Bleeds to the screen edge so the last tile is visibly cut off rather than sitting
-      // flush, which is what tells a buyer the row scrolls at all.
-      paddingRight: spacing.xl,
-      paddingBottom: spacing.lg,
     },
     addressDetails: {
       marginTop: spacing.sm,

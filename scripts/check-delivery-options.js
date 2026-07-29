@@ -49,7 +49,7 @@ function translator(language) {
 
 const {
   findCourier, findMethod, selectableCouriers, formatDeliveryDays, localizedName, methodLabel,
-  methodPriceBdt,
+  methodPriceBdt, isPickup, PICKUP_ID,
 } = loadModule('src/features/checkout/utils/deliveryOptions.js');
 
 const failures = [];
@@ -80,7 +80,6 @@ const pathao = {
   methods: [
     // A code this build does not know: an older row, or a type added after the APK shipped.
     { id: 21, code: 'SAME_DAY', pricePaisa: 25000 },
-    { id: 22, code: 'PICKUP', pricePaisa: 0 },
   ],
 };
 const emptyCourier = { id: 3, name: 'Sundarban', methods: [] };
@@ -98,13 +97,23 @@ check('findMethod tolerates a string id', findMethod(couriers, '12')?.code, 'EXP
 check('findMethod unknown id', findMethod(couriers, 999), null);
 check('findMethod with no id', findMethod(couriers, null), null);
 
-// A courier with no methods is a dead end at checkout and must not be offered.
-check('selectableCouriers drops the empty courier', selectableCouriers(couriers).map((c) => c.id), [1, 2]);
-check('selectableCouriers on undefined', selectableCouriers(undefined), []);
+// Pickup is pinned first and has no row behind it; a courier with no methods is a dead end at
+// checkout and must not be offered at all.
+check('pickup leads the list, empty courier dropped', selectableCouriers(couriers).map((c) => c.id), [PICKUP_ID, 1, 2]);
+check('pickup is offered even with no couriers', selectableCouriers([]).map((c) => c.id), [PICKUP_ID]);
+check('pickup is offered on undefined', selectableCouriers(undefined).map((c) => c.id), [PICKUP_ID]);
+check('isPickup recognises the sentinel', [isPickup(PICKUP_ID), isPickup(1), isPickup(null)], [true, false, false]);
+
+// The synthetic entry has to resolve through the same lookups a real one does, or the screen
+// cannot price it, label it or decide whether to ask for an address.
+check('findCourier resolves pickup', findCourier(couriers, PICKUP_ID)?.code, 'PICKUP');
+check('findMethod resolves pickup', findMethod(couriers, PICKUP_ID)?.code, 'PICKUP');
+check('pickup costs nothing', methodPriceBdt(findMethod(couriers, PICKUP_ID)), 0);
+check('pickup courier labels from its type', localizedName(findCourier(couriers, PICKUP_ID), 'bn'), 'নিজে সংগ্রহ');
 
 // ---- price -------------------------------------------------------------------------------
 check('price converts paisa to BDT', methodPriceBdt(redx.methods[1]), 150);
-check('free method is 0', methodPriceBdt(pathao.methods[1]), 0);
+check('free method is 0', methodPriceBdt({ code: 'STANDARD', pricePaisa: 0 }), 0);
 check('missing method is 0', methodPriceBdt(null), 0);
 
 // ---- names -------------------------------------------------------------------------------
@@ -118,7 +127,7 @@ check('missing entity', localizedName(null, 'en'), '');
 // called Express for every courier.
 check('method label in en', methodLabel(redx.methods[1], 'en'), 'Express');
 check('method label in bn', methodLabel(redx.methods[1], 'bn'), 'এক্সপ্রেস');
-check('pickup label in bn', methodLabel(pathao.methods[1], 'bn'), 'নিজে সংগ্রহ');
+check('pickup label in bn', methodLabel({ code: 'PICKUP' }, 'bn'), 'নিজে সংগ্রহ');
 // Unknown type: show the raw code rather than a blank row.
 check('unknown type falls back to its code', methodLabel(pathao.methods[0], 'en'), 'SAME_DAY');
 check('missing method label', methodLabel(null, 'en'), '');
@@ -130,7 +139,9 @@ const tbn = translator('bn');
 check('the courier’s own range is used', formatDeliveryDays(redx.methods[0], 'en', ten), '3-5 business days');
 check('a courier can differ from the type default', formatDeliveryDays({ code: 'EXPRESS', minDays: 2, maxDays: 4 }, 'en', ten), '2-4 business days');
 check('no stored range falls back to the type', formatDeliveryDays(redx.methods[2], 'en', ten), '3-5 business days');
-check('pickup collapses to the exact form', formatDeliveryDays(pathao.methods[1], 'en', ten), '0 business days');
+// Pickup is not measured in days — "0 business days" would be nonsense to someone collecting.
+check('pickup reads as a readiness note, not a day count', formatDeliveryDays({ code: 'PICKUP' }, 'en', ten), 'Ready within 24 hours');
+check('pickup readiness note in bn', formatDeliveryDays({ code: 'PICKUP' }, 'bn', tbn), '২৪ ঘণ্টার মধ্যে প্রস্তুত');
 // Bengali numerals come from formatNumber, which is why the values are formatted before
 // interpolation rather than handed to i18next as raw numbers.
 check('bn range uses Bengali numerals', formatDeliveryDays(redx.methods[0], 'bn', tbn), '৩-৫ কার্যদিবস');

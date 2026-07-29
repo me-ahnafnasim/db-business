@@ -14,7 +14,7 @@ import NoboSoleLoader from "../ui/NoboSoleLoader";
 
 import { TAB_KEYS } from "../data/tabs";
 import { PAYMENT_OPTIONS } from "../features/checkout/data/paymentOptions";
-import { findMethod, formatDeliveryDays, methodLabel, methodPriceBdt } from "../features/checkout/utils/deliveryOptions";
+import { findMethod, formatDeliveryDays, isPickup, methodLabel, methodPriceBdt } from "../features/checkout/utils/deliveryOptions";
 import {
   buildCatalog,
   fetchCatalogRaw,
@@ -740,8 +740,11 @@ export default function MainTabs({ auth, onSignIn, onSignOut }) {
         idempotencyKey: checkoutAttemptId.current,
         address: shippingMethod?.requiresAddress ? shippingAddress : undefined,
         // Only the id: the server reads the price from that row, so no amount is ever sent
-        // from the client.
-        shippingMethodId: shippingMethod ? Number(shippingMethod.id) : undefined,
+        // from the client. Pickup has no row — it goes as the text code, and with no id the
+        // server's delivery charge falls through to zero, which is what pickup costs.
+        ...(isPickup(shippingMethodId)
+          ? { shippingMethod: "PICKUP" }
+          : { shippingMethodId: shippingMethod ? Number(shippingMethod.id) : undefined }),
         paymentMethod: paymentMethod?.id === "bank" ? "BANK_TRANSFER" : "COD",
       });
       const order = response.data;
@@ -857,7 +860,11 @@ export default function MainTabs({ auth, onSignIn, onSignOut }) {
             shippingAddress={shippingAddress}
             savedAddress={savedAddress}
             onBack={popScreen}
-            onSelectCourier={(nextCourierId) => { setCourierId(nextCourierId); setShippingMethodId(null); }}
+            onSelectCourier={(nextCourierId) => {
+              setCourierId(nextCourierId);
+              // Pickup has no method to choose, so selecting it settles both at once.
+              setShippingMethodId(isPickup(nextCourierId) ? nextCourierId : null);
+            }}
             onSelectShipping={setShippingMethodId}
             onAddressChange={setShippingAddress}
             onContinue={handleContinueToPayment}
