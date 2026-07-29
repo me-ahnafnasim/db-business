@@ -58,6 +58,7 @@ import ShippingScreen from "./ShippingScreen";
 
 const STACK_ROUTES = {
   SEARCH: "search",
+  HELP_CENTER: "help-center",
   PRODUCT_DETAILS: "product-details",
   SHIPPING: "shipping",
   PAYMENT: "payment",
@@ -65,7 +66,6 @@ const STACK_ROUTES = {
   ORDER_CONFIRMATION: "order-confirmation",
   ORDERS: "orders",
   EXPENSE_TRACKER: "expense-tracker",
-  HELP_CENTER: "help-center",
 };
 
 // Data older than this is worth refreshing in the background; newer than this, a
@@ -508,9 +508,40 @@ export default function MainTabs({ auth, onSignIn, onSignOut }) {
   // Re-visiting a tab moves it to the top of the trail rather than appending, so the history
   // stays bounded by the tab count and back never walks a loop. Choosing Home explicitly
   // clears the trail — Home is then one press from the exit prompt.
+  // WhatsApp is the entire support channel — there is no complaint feature — and the message
+  // used to be a constant carrying no context at all. Passing the product code or order
+  // number means the customer never has to read, remember or retype an identifier.
+  const handleContactSupport = useCallback((context = null) => {
+    const message = context?.productCode
+      ? tRef.current("support.productMessage", {
+          code: context.productCode,
+          name: context.productName || "",
+        })
+      : context?.orderNumber
+        ? tRef.current("support.orderMessage", { order: context.orderNumber })
+        : tRef.current("profile.supportMessage");
+
+    Linking.openURL(
+      `https://wa.me/393202935579?text=${encodeURIComponent(message)}`
+    ).catch(() => {
+      Alert.alert(
+        tRef.current("profile.linkErrorTitle"),
+        tRef.current("profile.linkErrorMessage")
+      );
+    });
+  }, []);
+
   const navigateToTab = useCallback((key) => {
     if (key === TAB_KEYS.CART && !auth?.isSignedIn) {
       requestSignIn();
+      return;
+    }
+    // Support is an action, not a destination: it hands off to WhatsApp and leaves the user
+    // exactly where they were. Returning before the history update is the point — switching to
+    // it would mean coming back from WhatsApp to a tab that has no screen behind it, showing
+    // as selected.
+    if (key === TAB_KEYS.SUPPORT) {
+      handleContactSupport();
       return;
     }
     setTabHistory((prev) => {
@@ -518,7 +549,7 @@ export default function MainTabs({ auth, onSignIn, onSignOut }) {
       if (key === TAB_KEYS.HOME) return [TAB_KEYS.HOME];
       return [TAB_KEYS.HOME, ...prev.filter((tab) => tab !== TAB_KEYS.HOME && tab !== key), key];
     });
-  }, [auth?.isSignedIn, requestSignIn]);
+  }, [auth?.isSignedIn, requestSignIn, handleContactSupport]);
 
   const popTab = useCallback(() => {
     setTabHistory((prev) => (prev.length > 1 ? prev.slice(0, -1) : prev));
@@ -561,28 +592,6 @@ export default function MainTabs({ auth, onSignIn, onSignOut }) {
     () => pushScreen(STACK_ROUTES.HELP_CENTER),
     [pushScreen]
   );
-  // WhatsApp is the entire support channel — there is no complaint feature — and the message
-  // used to be a constant carrying no context at all. Passing the product code or order
-  // number means the customer never has to read, remember or retype an identifier.
-  const handleContactSupport = useCallback((context = null) => {
-    const message = context?.productCode
-      ? tRef.current("support.productMessage", {
-          code: context.productCode,
-          name: context.productName || "",
-        })
-      : context?.orderNumber
-        ? tRef.current("support.orderMessage", { order: context.orderNumber })
-        : tRef.current("profile.supportMessage");
-
-    Linking.openURL(
-      `https://wa.me/393202935579?text=${encodeURIComponent(message)}`
-    ).catch(() => {
-      Alert.alert(
-        tRef.current("profile.linkErrorTitle"),
-        tRef.current("profile.linkErrorMessage")
-      );
-    });
-  }, []);
   // These handlers are passed to every screen and down into memoized rows, so they must
   // keep a stable identity. They read the volatile values they need from `stateRef`
   // instead of closing over them, which is what lets the dependency arrays stay empty.

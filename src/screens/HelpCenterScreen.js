@@ -13,6 +13,10 @@ import { AppText, Button, Card } from "../ui";
 // Self-serve answers, so the Support section has two rows that mean different things:
 // Help Center is "how does this work", Customer Service is "I need a person".
 //
+// A pushed screen, reached from Profile. The Support entry in the bottom bar does NOT come here
+// — it opens WhatsApp directly, because the thing people want from "support" is a person, not
+// an FAQ. These are the two halves of the same section and they stay separate.
+//
 // Deliberately offline: every answer ships in the bundle rather than living on the web
 // storefront. The moment someone needs the pack rules explained is the moment they are stuck
 // in the configurator, which is not the moment to depend on a signal.

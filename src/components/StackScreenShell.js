@@ -34,10 +34,10 @@ export default function StackScreenShell({
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
-      <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={colors.surface} />
+      <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={colors.background} />
       <View style={styles.container}>
         <View style={styles.header}>
-          <IconButton label={t("common.back")} onPress={onBack}>
+          <IconButton label={t("common.back")} onPress={onBack} style={styles.backButton}>
             <Feather name="chevron-left" size={22} color={colors.textPrimary} />
           </IconButton>
           <View style={styles.headerText}>
@@ -60,7 +60,8 @@ const getStyles = (colors) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: colors.surface,
+      // Follows the header it sits above; see the note on the StatusBar colour.
+      backgroundColor: colors.background,
     },
     container: {
       flex: 1,
@@ -73,7 +74,15 @@ const getStyles = (colors) =>
       paddingHorizontal: spacing.gutter,
       paddingTop: spacing.lg - 2,
       paddingBottom: spacing.lg - 2,
-      backgroundColor: colors.surface,
+      // Matches Header on the tab screens: body colour, one rule beneath it.
+      backgroundColor: colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+    },
+    // Same treatment as the tab header's controls: this header is on the body colour too, so
+    // surfaceSoft would leave the back button at 1.05:1 in light theme.
+    backButton: {
+      backgroundColor: colors.headerControlBackground,
     },
     headerText: {
       flex: 1,

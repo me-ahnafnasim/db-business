@@ -42,7 +42,7 @@ export default function ScreenShell({
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-      <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={colors.surface} />
+      <StatusBar style={isDarkMode ? "light" : "dark"} backgroundColor={colors.background} />
       <View style={styles.container}>
         {showHeader ? (
           <Header
@@ -74,7 +74,8 @@ const getStyles = (colors) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: colors.surface,
+      // Follows the header it sits above; see the note on the StatusBar colour.
+      backgroundColor: colors.background,
     },
     container: {
       flex: 1,
