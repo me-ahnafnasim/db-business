@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { radius, spacing, useStyles, useTheme } from "../../../theme";
 import { AppText, IconButton, Input } from "../../../ui";
+import ProductConfigColorSelect from "./ProductConfigColorSelect";
 
 // One size's share of the dozen.
 //
@@ -25,6 +26,9 @@ function ProductConfigPairStepper({
   remaining,
   onChange,
   invalid = false,
+  colorValue,
+  colorOptions = [],
+  onColorChange,
 }) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -36,43 +40,53 @@ function ProductConfigPairStepper({
 
   return (
     <View style={[styles.row, invalid && styles.rowInvalid]}>
-      <AppText variant="bodySm" style={styles.label} numberOfLines={1}>
-        {label}
-      </AppText>
-      <View style={styles.stepper}>
-        <IconButton
-          label={t("cart.decrease", { name: label })}
-          onPress={() => onChange(size, value - 1)}
-          disabled={!canDecrease}
-          size="md"
-          tone="bordered"
-        >
-          <Feather name="minus" size={16} color={colors.textPrimary} />
-        </IconButton>
-        <Input
-          value={String(value)}
-          onChangeText={(raw) => {
-            // Empty is treated as 0 so the field can be cleared while editing; the parent
-            // clamps to whatever budget is actually left. Three digits because the budget is
-            // 12 x quantity, so a single size can legitimately exceed 99.
-            const digits = raw.replace(/[^0-9]/g, "").slice(0, 3);
-            onChange(size, digits === "" ? 0 : Number(digits));
-          }}
-          keyboardType="number-pad"
-          accessibilityLabel={label}
-          error={invalid}
-          style={styles.input}
-        />
-        <IconButton
-          label={t("cart.increase", { name: label })}
-          onPress={() => onChange(size, value + 1)}
-          disabled={!canIncrease}
-          size="md"
-          tone="bordered"
-        >
-          <Feather name="plus" size={16} color={colors.textPrimary} />
-        </IconButton>
+      <View style={styles.line}>
+        <AppText variant="bodySm" style={styles.label} numberOfLines={1}>
+          {label}
+        </AppText>
+        <View style={styles.stepper}>
+          <IconButton
+            label={t("cart.decrease", { name: label })}
+            onPress={() => onChange(size, value - 1)}
+            disabled={!canDecrease}
+            size="md"
+            tone="bordered"
+          >
+            <Feather name="minus" size={16} color={colors.textPrimary} />
+          </IconButton>
+          <Input
+            value={String(value)}
+            onChangeText={(raw) => {
+              // Empty is treated as 0 so the field can be cleared while editing; the parent
+              // clamps to whatever budget is actually left. Three digits because the budget is
+              // 12 x quantity, so a single size can legitimately exceed 99.
+              const digits = raw.replace(/[^0-9]/g, "").slice(0, 3);
+              onChange(size, digits === "" ? 0 : Number(digits));
+            }}
+            keyboardType="number-pad"
+            accessibilityLabel={label}
+            error={invalid}
+            style={styles.input}
+          />
+          <IconButton
+            label={t("cart.increase", { name: label })}
+            onPress={() => onChange(size, value + 1)}
+            disabled={!canIncrease}
+            size="md"
+            tone="bordered"
+          >
+            <Feather name="plus" size={16} color={colors.textPrimary} />
+          </IconButton>
+        </View>
       </View>
+      {colorOptions.length ? (
+        <ProductConfigColorSelect
+          value={colorValue}
+          options={colorOptions}
+          onChange={(nextColor) => onColorChange(size, nextColor)}
+          sizeLabel={size}
+        />
+      ) : null}
     </View>
   );
 }
@@ -82,15 +96,22 @@ export default memo(ProductConfigPairStepper);
 const getStyles = (colors) =>
   StyleSheet.create({
     row: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: spacing.md,
+      gap: spacing.sm,
       borderWidth: 1,
       borderColor: colors.border,
       borderRadius: radius.sm,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
+    },
+    // The size label and stepper keep the geometry they had when this row was a single line.
+    // The colour select sits under them rather than beside them: the comment above already
+    // records that two 36dp buttons plus the number field do not fit across a 320dp phone,
+    // and a third control on the same line would have to steal width from one of them.
+    line: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.md,
     },
     rowInvalid: {
       borderColor: colors.errorBorder,

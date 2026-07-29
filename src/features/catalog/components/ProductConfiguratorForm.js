@@ -6,6 +6,12 @@ import { radius, spacing, useStyles } from "../../../theme";
 import { AppText, Button, Chip } from "../../../ui";
 import { formatBdt, paisaToBdt } from "../../../utils/money";
 import { nextTier, unitPriceForQuantity } from "../utils/pricing";
+import {
+  assignColors,
+  buildAllocations,
+  unavailableRows,
+  unusedColors,
+} from "../utils/packColors";
 import ProductConfigPairStepper from "./ProductConfigPairStepper";
 import ProductConfigPriceSummary from "./ProductConfigPriceSummary";
 import ProductConfigQuantityControl from "./ProductConfigQuantityControl";
@@ -22,7 +28,10 @@ const MIN_PAIRS_PER_CELL = 2;
 function commonSizes(availability, colors) {
   if (!colors.length) return [];
   const sets = colors.map(
-    (color) => new Set(availability.find((item) => item.colorCode === color)?.sizeCodes ?? [])
+    (color) =>
+      new Set(
+        availability.find((item) => item.colorCode === color)?.sizeCodes ?? [],
+      ),
   );
   const [first, ...rest] = sets;
   return [...first].filter((size) => rest.every((set) => set.has(size))).sort();
@@ -45,47 +54,107 @@ function distributePairs(sizes, pack) {
 // `initialConfig` reopens an existing pack for editing — see configFromCartLine in
 // cartService. Everything below it is derived per render, so a valid saved pack opens
 // already valid with its submit button enabled.
-export default function ProductConfiguratorForm({ product, onAddToCart, initialConfig, submitLabel }) {
+export default function ProductConfiguratorForm({
+  product,
+  onAddToCart,
+  initialConfig,
+  submitLabel,
+}) {
   const { language } = useLanguage();
   const { t } = useTranslation();
   const styles = useStyles(getStyles);
   const firstColor = product.availableColors[0]?.value;
   const [quantityInput, setQuantityInput] = useState(() =>
-    initialConfig ? String(initialConfig.quantity) : "1"
+    initialConfig ? String(initialConfig.quantity) : "1",
   );
   const quantity = Math.max(1, Number(quantityInput || 1));
   const [selectedColors, setSelectedColors] = useState(() =>
-    initialConfig?.colors?.length ? initialConfig.colors : (firstColor ? [firstColor] : [])
+    initialConfig?.colors?.length
+      ? initialConfig.colors
+      : firstColor
+        ? [firstColor]
+        : [],
   );
-  const [selectedSizes, setSelectedSizes] = useState(() => initialConfig?.sizes ?? []);
+  const [selectedSizes, setSelectedSizes] = useState(
+    () => initialConfig?.sizes ?? [],
+  );
   // TOTAL pairs for each size across the whole order — not per dozen. The server sums every
   // allocation flat and compares against 12 * quantityDozen, so the budget grows with the
   // quantity and so does the per-size minimum.
-  const [pairCounts, setPairCounts] = useState(() => initialConfig?.pairCounts ?? {});
+  const [pairCounts, setPairCounts] = useState(
+    () => initialConfig?.pairCounts ?? {},
+  );
+  // The colour each size is ordered in. Seeded from the reopened pack when there is one, then
+  // defaulted for anything it does not cover.
+  const [colorBySize, setColorBySize] = useState(() =>
+    assignColors(
+      initialConfig?.sizes ?? [],
+      initialConfig?.colors?.length
+        ? initialConfig.colors
+        : firstColor
+          ? [firstColor]
+          : [],
+      initialConfig?.colorBySize ?? {},
+    ),
+  );
 
   const pack = PAIRS_PER_DOZEN * quantity;
-  // Each size's total is divided across `quantity` colours, and every resulting cell has to
-  // clear the server's minimum of 2 — so the smallest workable size total is 2 per colour.
-  const minPerSize = MIN_PAIRS_PER_CELL * quantity;
+  // One row is now exactly one allocation — one colour, one size — so the floor is the
+  // server's own MIN_PAIRS_PER_ALLOCATION and nothing more. It used to be multiplied by the
+  // quantity because each size's total was split across every selected colour, which made a
+  // 5-dozen pack demand 10 pairs in a size before it would submit.
+  const minPerSize = MIN_PAIRS_PER_CELL;
 
   const variantByCell = useMemo(
-    () => new Map(product.variants.map((v) => [`${v.colorCode}:${v.sizeCode}`, v])),
-    [product.variants]
+    () =>
+      new Map(product.variants.map((v) => [`${v.colorCode}:${v.sizeCode}`, v])),
+    [product.variants],
   );
   const availableSizes = useMemo(
-    () => commonSizes(product.availability, selectedColors).map((value) => ({ label: value, value })),
-    [product.availability, selectedColors]
+    () =>
+      commonSizes(product.availability, selectedColors).map((value) => ({
+        label: value,
+        value,
+      })),
+    [product.availability, selectedColors],
   );
 
-  const totalPairs = selectedSizes.reduce((sum, s) => sum + Number(pairCounts[s] || 0), 0);
+  // The chips, the row dropdowns and the error messages all name colours, and they have to
+  // name them identically — so the Bangla fallback lives here once instead of at each site.
+  const colorLabelFor = (value) => {
+    const option = product.availableColors.find((item) => item.value === value);
+    if (!option) return value;
+    return language === "bn" && option.colorNameBn
+      ? option.colorNameBn
+      : option.label;
+  };
+  // Only colours the buyer actually picked. commonSizes keeps the selected sizes to those
+  // every picked colour can produce, so every option here is valid in every row.
+  const colorOptions = useMemo(
+    () =>
+      selectedColors.map((value) => ({ value, label: colorLabelFor(value) })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedColors, product.availableColors, language],
+  );
+
+  const totalPairs = selectedSizes.reduce(
+    (sum, s) => sum + Number(pairCounts[s] || 0),
+    0,
+  );
   const remaining = pack - totalPairs;
   const allSizesHaveMinPairs =
-    selectedSizes.length > 0 && selectedSizes.every((s) => Number(pairCounts[s] || 0) >= minPerSize);
+    selectedSizes.length > 0 &&
+    selectedSizes.every((s) => Number(pairCounts[s] || 0) >= minPerSize);
 
   // Changing the sizes re-splits the pack, so it is always valid without any typing.
-  const setSizes = (nextSizes, nextPack = pack) => {
+  const setSizes = (
+    nextSizes,
+    nextPack = pack,
+    nextColors = selectedColors,
+  ) => {
     setSelectedSizes(nextSizes);
     setPairCounts(distributePairs(nextSizes, nextPack));
+    setColorBySize((previous) => assignColors(nextSizes, nextColors, previous));
   };
 
   // The reported bug: raising the quantity used to change nothing, leaving the budget at 12
@@ -96,14 +165,15 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
     if (nextQuantity === quantity) return;
 
     // Lowering the quantity also lowers the colour cap, so keep the most recent choices.
-    const nextColors = selectedColors.length > nextQuantity
-      ? selectedColors.slice(selectedColors.length - nextQuantity)
-      : selectedColors;
+    const nextColors =
+      selectedColors.length > nextQuantity
+        ? selectedColors.slice(selectedColors.length - nextQuantity)
+        : selectedColors;
     const allowed = commonSizes(product.availability, nextColors);
     const nextSizes = selectedSizes.filter((s) => allowed.includes(s));
 
     setSelectedColors(nextColors);
-    setSizes(nextSizes, PAIRS_PER_DOZEN * nextQuantity);
+    setSizes(nextSizes, PAIRS_PER_DOZEN * nextQuantity, nextColors);
   };
 
   const applyColors = (nextColors) => {
@@ -113,8 +183,16 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
     // Only rebalance if the colour change actually dropped a size. Swapping between colours
     // that offer the same sizes leaves the customer's pair counts alone.
     if (nextSizes.length !== selectedSizes.length) {
-      setSizes(nextSizes);
+      setSizes(nextSizes, pack, nextColors);
+      return;
     }
+    // The pair counts survive, but the rows still have to point at colours that are actually
+    // selected — a deselected colour would otherwise stay assigned to its size.
+    setColorBySize((previous) => assignColors(nextSizes, nextColors, previous));
+  };
+
+  const updateColorForSize = (size, color) => {
+    setColorBySize((previous) => ({ ...previous, [size]: color }));
   };
 
   const toggleColor = (value) => {
@@ -128,7 +206,10 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
     }
     // At the cap the newest tap wins: keep the most recent (quantity - 1) and append the new
     // one, so the selection is always the last `quantity` colours the customer touched.
-    applyColors([...selectedColors.slice(selectedColors.length - (quantity - 1)), value]);
+    applyColors([
+      ...selectedColors.slice(selectedColors.length - (quantity - 1)),
+      value,
+    ]);
   };
 
   const toggleSize = (value) => {
@@ -144,24 +225,52 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
   const updatePairs = (size, nextValue) => {
     const assignedElsewhere = selectedSizes.reduce(
       (sum, s) => (s === size ? sum : sum + Number(pairCounts[s] || 0)),
-      0
+      0,
     );
     const max = Math.max(0, pack - assignedElsewhere);
     const clamped = Math.max(0, Math.min(Number(nextValue) || 0, max));
     setPairCounts((prev) => ({ ...prev, [size]: clamped }));
   };
 
-  const error = !quantity || quantity < 1
-    ? t("catalog.enterQuantity")
-    : selectedColors.length < quantity
-      ? t("product_configurator.select_colors", { count: quantity })
-      : !selectedSizes.length
-        ? t("catalog.selectSize")
-        : !allSizesHaveMinPairs
-          ? t("product_configurator.min_pairs_per_size", { count: minPerSize })
-          : totalPairs !== pack
-            ? t("catalog.packPairTotal", { count: totalPairs, required: pack })
-            : "";
+  // Both derived through the shared helpers, so check-catalog-contract.js exercises the same
+  // code this screen runs rather than a second copy of the rule.
+  const unassignedColors = unusedColors(
+    selectedSizes,
+    selectedColors,
+    colorBySize,
+  );
+  const missingVariantRows = unavailableRows(
+    selectedSizes,
+    colorBySize,
+    variantByCell,
+  );
+
+  const error =
+    !quantity || quantity < 1
+      ? t("catalog.enterQuantity")
+      : selectedColors.length < 1
+        ? t("product_configurator.select_at_least_one_color")
+        : !selectedSizes.length
+          ? t("catalog.selectSize")
+          : unassignedColors.length
+            ? t("product_configurator.colors_unused", {
+                colors: unassignedColors.map(colorLabelFor).join(", "),
+              })
+            : missingVariantRows.length
+              ? t("product_configurator.color_size_unavailable", {
+                  size: missingVariantRows[0],
+                  color: colorLabelFor(colorBySize[missingVariantRows[0]]),
+                })
+              : !allSizesHaveMinPairs
+                ? t("product_configurator.min_pairs_per_size", {
+                    count: minPerSize,
+                  })
+                : totalPairs !== pack
+                  ? t("catalog.packPairTotal", {
+                      count: totalPairs,
+                      required: pack,
+                    })
+                  : "";
 
   // The per-dozen price for the quantity currently dialled in, not the catalogue price. This
   // is the only place in the app where a quantity and a price meet before checkout, so it is
@@ -176,28 +285,28 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
   const canSubmit = !error;
 
   const handleAdd = () => {
-    const flatAllocations = [];
-    for (const size of selectedSizes) {
-      // Split this size's total across the colours, remainder first. The server places no
-      // constraint on per-colour subtotals, so an odd total is representable exactly — which
-      // is what the old floor-and-redistribute pass could not do.
-      const total = Number(pairCounts[size] || 0);
-      const base = Math.floor(total / selectedColors.length);
-      let extra = total - base * selectedColors.length;
-      for (const color of selectedColors) {
-        const variant = variantByCell.get(`${color}:${size}`);
-        if (!variant) continue;
-        const pairs = base + (extra > 0 ? 1 : 0);
-        if (extra > 0) extra -= 1;
-        flatAllocations.push({ productVariantId: Number(variant.id), pairsPerDozen: pairs });
-      }
-    }
-    onAddToCart([{ product, allocations: flatAllocations, quantity }]);
+    // canSubmit has already ruled out a missing variant, so buildAllocations cannot throw.
+    onAddToCart([
+      {
+        product,
+        allocations: buildAllocations(
+          selectedSizes,
+          colorBySize,
+          pairCounts,
+          variantByCell,
+        ),
+        quantity,
+      },
+    ]);
   };
 
   return (
     <View>
-      <ProductConfigQuantityControl quantity={quantity} moq={product.moq} onChange={handleQuantityChange} />
+      <ProductConfigQuantityControl
+        quantity={quantity}
+        moq={product.moq}
+        onChange={handleQuantityChange}
+      />
       <AppText variant="caption" tone="secondary" style={styles.moqNote}>
         {t("catalog.moqAcrossPacks", { count: product.moq })}
       </AppText>
@@ -208,17 +317,24 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
         </AppText>
         <AppText
           variant="label"
-          tone={selectedColors.length >= quantity ? "success" : "error"}
+          tone={selectedColors.length >= 1 ? "success" : "error"}
           style={styles.counter}
         >
-          {t("catalog.selectionProgress", { selected: selectedColors.length, required: quantity })}
+          {t("catalog.selectionMax", {
+            selected: selectedColors.length,
+            max: quantity,
+          })}
         </AppText>
       </View>
       <View style={styles.optionWrap}>
         {product.availableColors.map((option) => (
           <Chip
             key={option.value}
-            label={language === "bn" && option.colorNameBn ? option.colorNameBn : option.label}
+            label={
+              language === "bn" && option.colorNameBn
+                ? option.colorNameBn
+                : option.label
+            }
             selected={selectedColors.includes(option.value)}
             onPress={() => toggleColor(option.value)}
             size="sm"
@@ -235,7 +351,10 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
           tone={selectedSizes.length > 0 ? "success" : "error"}
           style={styles.counter}
         >
-          {t("catalog.selectionProgress", { selected: selectedSizes.length, required: availableSizes.length })}
+          {t("catalog.selectionProgress", {
+            selected: selectedSizes.length,
+            required: availableSizes.length,
+          })}
         </AppText>
       </View>
       <View style={styles.optionWrap}>
@@ -286,6 +405,9 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
                 remaining={remaining}
                 onChange={updatePairs}
                 invalid={Number(pairCounts[size] || 0) < minPerSize}
+                colorValue={colorBySize[size]}
+                colorOptions={colorOptions}
+                onColorChange={updateColorForSize}
               />
             ))}
           </View>
@@ -303,17 +425,29 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
         <AppText variant="caption" tone="brand" style={styles.tierHint}>
           {t("catalog.nextTierHint", {
             count: Number(upcomingTier.minQuantityDozen) - quantity,
-            price: formatBdt(paisaToBdt(Number(upcomingTier.pricePerDozenPaisa)), language),
+            price: formatBdt(
+              paisaToBdt(Number(upcomingTier.pricePerDozenPaisa)),
+              language,
+            ),
           })}
         </AppText>
       ) : null}
       {/* originalBasePrice is the catalogue price either way — the summary strikes it through
           only when the effective price is lower, which is true for a tier and for a festival
           discount alike. */}
-      <ProductConfigPriceSummary basePrice={price} originalBasePrice={product.originalPrice}
-        sizeSurcharge={0} logoSurcharge={0} quantity={quantity} totalPrice={totalPrice} />
+      <ProductConfigPriceSummary
+        basePrice={price}
+        originalBasePrice={product.originalPrice}
+        sizeSurcharge={0}
+        logoSurcharge={0}
+        quantity={quantity}
+        totalPrice={totalPrice}
+      />
       <Button
-        title={submitLabel ?? t("product_configurator.add_dozen_to_cart", { count: quantity })}
+        title={
+          submitLabel ??
+          t("product_configurator.add_dozen_to_cart", { count: quantity })
+        }
         onPress={handleAdd}
         disabled={!canSubmit}
         size="lg"
@@ -322,59 +456,60 @@ export default function ProductConfiguratorForm({ product, onAddToCart, initialC
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
-  ruleHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacing.md,
-  },
-  sectionTitle: {
-    marginBottom: spacing.sm + 2,
-  },
-  counter: {
-    fontWeight: "800",
-    marginBottom: spacing.sm + 2,
-  },
-  optionWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  builder: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.lg - 2,
-    marginBottom: spacing.lg + 2,
-    backgroundColor: colors.surface,
-  },
-  builderHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: spacing.md,
-  },
-  remaining: {
-    marginBottom: spacing.xs,
-  },
-  hint: {
-    fontWeight: "400",
-    marginBottom: spacing.md,
-  },
-  // One size per row. A two-up grid cannot fit a label, two 36dp buttons and a number in
-  // half a phone's width.
-  matrix: {
-    gap: spacing.sm,
-  },
-  moqNote: {
-    marginBottom: spacing.md,
-  },
-  tierHint: {
-    marginBottom: spacing.sm,
-    fontWeight: "700",
-  },
-  errorText: {
-    marginBottom: spacing.lg - 2,
-  },
-});
+const getStyles = (colors) =>
+  StyleSheet.create({
+    ruleHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.md,
+    },
+    sectionTitle: {
+      marginBottom: spacing.sm + 2,
+    },
+    counter: {
+      fontWeight: "800",
+      marginBottom: spacing.sm + 2,
+    },
+    optionWrap: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.sm,
+      marginBottom: spacing.xl,
+    },
+    builder: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      padding: spacing.lg - 2,
+      marginBottom: spacing.lg + 2,
+      backgroundColor: colors.surface,
+    },
+    builderHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: spacing.md,
+    },
+    remaining: {
+      marginBottom: spacing.xs,
+    },
+    hint: {
+      fontWeight: "400",
+      marginBottom: spacing.md,
+    },
+    // One size per row. A two-up grid cannot fit a label, two 36dp buttons and a number in
+    // half a phone's width.
+    matrix: {
+      gap: spacing.sm,
+    },
+    moqNote: {
+      marginBottom: spacing.md,
+    },
+    tierHint: {
+      marginBottom: spacing.sm,
+      fontWeight: "700",
+    },
+    errorText: {
+      marginBottom: spacing.lg - 2,
+    },
+  });

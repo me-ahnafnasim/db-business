@@ -40,15 +40,34 @@ export function catalogProductFor(catalog, productId) {
 export function configFromCartLine(line) {
   const allocations = line?.allocations || [];
   const pairCounts = {};
+  // Pairs per (size, colour), used only to pick each size's colour below.
+  const pairsBySizeColor = {};
+
   for (const allocation of allocations) {
-    pairCounts[allocation.sizeCode] =
-      (pairCounts[allocation.sizeCode] || 0) + Number(allocation.pairsPerDozen || 0);
+    const size = allocation.sizeCode;
+    const pairs = Number(allocation.pairsPerDozen || 0);
+    pairCounts[size] = (pairCounts[size] || 0) + pairs;
+    if (!pairsBySizeColor[size]) pairsBySizeColor[size] = {};
+    pairsBySizeColor[size][allocation.colorCode] =
+      (pairsBySizeColor[size][allocation.colorCode] || 0) + pairs;
   }
+
+  // The configurator now orders one colour per size, but packs built before that split every
+  // size across every colour — so a saved line can arrive with several allocations for one
+  // size. Collapse to whichever colour carried the most pairs; `pairCounts` still holds the
+  // size's full total, so reopening an old pack never changes what it costs or how many pairs
+  // it contains, only which colour they are attributed to.
+  const colorBySize = {};
+  for (const [size, byColor] of Object.entries(pairsBySizeColor)) {
+    colorBySize[size] = Object.entries(byColor).sort((a, b) => b[1] - a[1])[0][0];
+  }
+
   return {
     quantity: Number(line?.quantity || 1),
     colors: [...new Set(allocations.map((a) => a.colorCode))],
     sizes: [...new Set(allocations.map((a) => a.sizeCode))].sort(),
     pairCounts,
+    colorBySize,
   };
 }
 

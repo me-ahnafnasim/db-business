@@ -120,7 +120,8 @@
     "nextTierHint": "Add {{count}} more dozen to pay {{price}} per dozen.",
     "tierTitle": "Buy more, pay less",
     "tierRow": "{{count}} dozen or more",
-    "tierApplied": "Applied"
+    "tierApplied": "Applied",
+    "selectionMax": "{{selected}} of {{max}} max"
   },
   "search": {
     "title": "Search",
@@ -428,7 +429,14 @@
     "pairs_complete": "Pack complete",
     "min_pairs_hint": "Minimum {{count}} pairs per size",
     "add_dozen_to_cart": "Add {{count}} dozen to cart",
-    "save_changes": "Save changes"
+    "save_changes": "Save changes",
+    "select_at_least_one_color": "Select at least one color",
+    "colors_unused": "Assign {{colors}} to a size, or remove it from your colors",
+    "color_size_unavailable": "{{color}} is not available in size {{size}}",
+    "color": "Color",
+    "choose_color": "Choose a color",
+    "color_for_size": "Color for size {{size}}, currently {{color}}",
+    "color_for_size_hint": "This color applies to size {{size}} only"
   },
   "festival": {
     "days": "Days",

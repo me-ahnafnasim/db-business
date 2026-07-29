@@ -5,13 +5,15 @@
 // separate GET /products/:id. That split is invisible to the syntax, i18n and token checks —
 // all three pass whether or not a card can still become an order.
 //
-// The failure this exists to catch is silent. ProductConfiguratorForm builds allocations with
+// The failure this exists to catch is silent. The configurator used to build allocations with
 //
 //     const variant = variantByCell.get(`${color}:${size}`)
 //     if (!variant) continue
 //
-// so a mapper that loses variant ids does not throw. It drops allocations, and the pack simply
-// fails the server's PACK_PAIR_TOTAL check at checkout with nothing to point at.
+// so a mapper that loses variant ids did not throw. It dropped allocations, and the pack simply
+// failed the server's PACK_PAIR_TOTAL check at checkout with nothing to point at. buildAllocations
+// now throws instead, and the configurator blocks submit on unavailableRows — but the mapper can
+// still lose a variant, so section 4 keeps asserting the pack a real product can actually build.
 //
 // Fixtures are produced by running the real product controller against the real database, so
 // this checks the actual server-to-app contract rather than a hand-written idea of it.
@@ -101,6 +103,8 @@ const moduleStubs = {
 };
 
 const catalogService = loadModule('src/features/catalog/services/catalogService.js', moduleStubs);
+// Pure module, no stubs needed — that is why the pack rules live outside the component.
+const packColors = loadModule('src/features/catalog/utils/packColors.js');
 
 const FESTIVAL = { discountPercent: 20 };
 
@@ -231,6 +235,95 @@ async function run() {
     JSON.stringify(requestedParams));
   check('catalog list still filters to active products',
     requestedParams && requestedParams.isActive === true);
+
+  // ---- 4. The pack a buyer builds is a valid pack -----------------------------------------
+  //
+  // packColors holds the rules the configurator applies once colours and sizes are chosen:
+  // one colour per size, every picked colour used, allocations summing to 12 x quantity. Run
+  // against the real fixture products so a catalogue that cannot satisfy them is caught here
+  // rather than at checkout.
+  for (const card of products) {
+    const detail = await catalogService.fetchProductDetail(card.id, null);
+    const variantByCell = new Map(detail.variants.map((v) => [`${v.colorCode}:${v.sizeCode}`, v]));
+    const allColors = detail.availableColors.map((option) => option.value);
+
+    for (let quantity = 1; quantity <= Math.min(3, allColors.length); quantity += 1) {
+      const colors = allColors.slice(0, quantity);
+      // Same intersection the configurator uses: sizes every picked colour can produce.
+      const sizes = colors
+        .map((color) => new Set(detail.availability.find((a) => a.colorCode === color)?.sizeCodes ?? []))
+        .reduce((acc, set) => acc.filter((size) => set.has(size)),
+          [...new Set(detail.availability.flatMap((a) => a.sizeCodes))].sort());
+
+      const label = `product ${card.id} q${quantity}`;
+      check(`${label} has sizes every picked colour can make`, sizes.length > 0,
+        `colors ${colors.join(',')}`);
+      if (!sizes.length) continue;
+
+      const colorBySize = packColors.assignColors(sizes, colors);
+
+      check(`${label} assigns a colour to every size`,
+        sizes.every((size) => colors.includes(colorBySize[size])),
+        JSON.stringify(colorBySize));
+
+      // The rule the buyer is held to: picking a colour means ordering it. The default has to
+      // satisfy it whenever there are at least as many sizes as colours, or a fresh pack would
+      // open already blocked.
+      const unused = packColors.unusedColors(sizes, colors, colorBySize);
+      check(`${label} default uses every picked colour`,
+        sizes.length >= colors.length ? unused.length === 0 : true,
+        `unused ${unused.join(',')} across ${sizes.length} sizes`);
+
+      // The case above never reaches the rule that matters. With nothing assigned yet every
+      // row is blank, so simply filling the blanks already spreads the colours. The rule only
+      // does work when the rows are ALREADY taken — a buyer who set every row to one colour
+      // and then picks a second — so start from exactly that.
+      const crowded = packColors.assignColors(
+        sizes, colors, Object.fromEntries(sizes.map((size) => [size, colors[0]])));
+      const crowdedUnused = packColors.unusedColors(sizes, colors, crowded);
+      check(`${label} frees rows for colours that would otherwise go unordered`,
+        sizes.length >= colors.length ? crowdedUnused.length === 0 : true,
+        `unused ${crowdedUnused.join(',')} from ${JSON.stringify(crowded)}`);
+
+      check(`${label} every row resolves to a variant`,
+        packColors.unavailableRows(sizes, colorBySize, variantByCell).length === 0);
+
+      // distributePairs' split, reproduced: the budget divided across the sizes.
+      const pack = 12 * quantity;
+      const base = Math.floor(pack / sizes.length);
+      let leftover = pack - base * sizes.length;
+      const pairCounts = {};
+      for (const size of sizes) {
+        pairCounts[size] = base + (leftover > 0 ? 1 : 0);
+        if (leftover > 0) leftover -= 1;
+      }
+
+      const allocations = packColors.buildAllocations(sizes, colorBySize, pairCounts, variantByCell);
+      check(`${label} allocations sum to the pack`,
+        allocations.reduce((sum, a) => sum + a.pairsPerDozen, 0) === pack,
+        `${allocations.reduce((sum, a) => sum + a.pairsPerDozen, 0)} vs ${pack}`);
+      check(`${label} every allocation clears the server minimum of 2`,
+        allocations.every((a) => a.pairsPerDozen >= 2),
+        JSON.stringify(allocations.map((a) => a.pairsPerDozen)));
+      check(`${label} a variant appears at most once`,
+        new Set(allocations.map((a) => a.productVariantId)).size === allocations.length);
+    }
+  }
+
+  // A choice already made survives an unrelated change, or editing one row would silently
+  // reshuffle the others.
+  const crowded3 = packColors.assignColors(
+    ['38', '40', '41'], ['A', 'B', 'C'], { '38': 'A', '40': 'A', '41': 'A' });
+  check('assignColors reassigns trailing rows when every row is already taken',
+    packColors.unusedColors(['38', '40', '41'], ['A', 'B', 'C'], crowded3).length === 0,
+    JSON.stringify(crowded3));
+
+  const kept = packColors.assignColors(['38', '40', '41'], ['A', 'B'], { '40': 'B' });
+  check('assignColors keeps an existing choice', kept['40'] === 'B', JSON.stringify(kept));
+  check('assignColors drops a colour that is no longer selected',
+    Object.values(packColors.assignColors(['38'], ['A'], { '38': 'GONE' })).every((c) => c === 'A'));
+  check('assignColors reports the impossible case rather than hiding it',
+    packColors.unusedColors(['38'], ['A', 'B'], packColors.assignColors(['38'], ['A', 'B'])).length === 1);
 }
 
 run().then(() => {

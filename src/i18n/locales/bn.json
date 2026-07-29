@@ -120,7 +120,8 @@
     "nextTierHint": "আরও {{count}} ডজন যোগ করলে প্রতি ডজন {{price}} পড়বে।",
     "tierTitle": "বেশি নিলে দাম কম",
     "tierRow": "{{count}} ডজন বা তার বেশি",
-    "tierApplied": "প্রযোজ্য"
+    "tierApplied": "প্রযোজ্য",
+    "selectionMax": "{{max}} টির মধ্যে {{selected}} টি"
   },
   "search": {
     "title": "খুঁজুন",
@@ -428,7 +429,14 @@
     "pairs_complete": "প্যাক সম্পূর্ণ",
     "min_pairs_hint": "প্রতি সাইজে ন্যূনতম {{count}} জোড়া",
     "add_dozen_to_cart": "কার্টে {{count}} ডজন যোগ করুন",
-    "save_changes": "পরিবর্তন সংরক্ষণ করুন"
+    "save_changes": "পরিবর্তন সংরক্ষণ করুন",
+    "select_at_least_one_color": "অন্তত একটি রঙ নির্বাচন করুন",
+    "colors_unused": "{{colors}} একটি সাইজে বরাদ্দ করুন, অথবা রঙের তালিকা থেকে সরিয়ে দিন",
+    "color_size_unavailable": "{{size}} সাইজে {{color}} পাওয়া যাচ্ছে না",
+    "color": "রঙ",
+    "choose_color": "একটি রঙ বেছে নিন",
+    "color_for_size": "{{size}} সাইজের রঙ, বর্তমানে {{color}}",
+    "color_for_size_hint": "এই রঙ শুধু {{size}} সাইজের জন্য প্রযোজ্য"
   },
   "festival": {
     "days": "দিন",

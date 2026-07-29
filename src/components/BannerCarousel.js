@@ -46,6 +46,11 @@ export default function BannerCarousel({ slides, active = true }) {
   const { width } = useWindowDimensions();
   const slideWidth = width - 40;
   const slideHeight = slideWidth / (920 / 520);
+  // Below 340 the banner is ~170px tall or less, and a two-line 20px overlay covers most of
+  // the photograph — including any text the admin drew into the artwork. Compact mode steps
+  // the type down one variant and caps each line to one, sized off the slide the type
+  // actually sits on rather than a global device class. 340 slide width = a 380dp device.
+  const compact = slideWidth < 340;
   const scrollX = useRef(new Animated.Value(0)).current;
   // The pagination dots animate `width`, which is a layout property and therefore can
   // never run on the native driver. Keeping them on `scrollX` forced the whole carousel —
@@ -136,21 +141,46 @@ export default function BannerCarousel({ slides, active = true }) {
       const content = (showIcon) => (
         <Animated.View style={[styles.bannerContent, { transform: [{ translateY }] }]}>
           {showIcon ? (
-            <Feather name="shopping-bag" size={26} color={ICON_ON_IMAGE} style={styles.bannerIcon} />
+            <Feather
+              name="shopping-bag"
+              size={compact ? 20 : 26}
+              color={ICON_ON_IMAGE}
+              style={styles.bannerIcon}
+            />
           ) : null}
           {/* Both capped, because slide text is admin-entered and the server allows a 180
               character title and a 240 character subtitle. Uncapped, a long slide wraps to
               eight or ten lines, grows upward out of the banner (the content is flex-end) and
               is sliced mid-line by the banner's overflow:hidden — on a 320dp phone in Bangla
-              the stack reaches roughly three times the slide height. Two lines each fits every
-              device and locale with room to spare, and ellipsises rather than truncating
-              invisibly. */}
-          <AppText variant="caption" numberOfLines={2} style={styles.bannerSubtitle}>
-            {item.subtitle}
-          </AppText>
-          <AppText variant="h3" tone="inverse" numberOfLines={2} style={styles.bannerTitle}>
-            {item.title}
-          </AppText>
+              the stack reaches roughly three times the slide height.
+
+              In compact mode the title cap tightens to ONE line and its variant steps down.
+              The banner on a 320dp phone is only ~158px tall; at two lines apiece the overlay
+              covered up to 89% of the photograph in Bangla, hiding whatever the admin drew in
+              the image, and ellipsis keeps the truncation visible rather than silent.
+
+              The subtitle is one line at `micro` on EVERY device, not just the small ones. It
+              is a kicker for the title, and at two lines of `caption` it was the single
+              largest thing in the overlay — the admin's own artwork is what the banner is for.
+              Both nodes are conditional: `subtitle` is optional on the server
+              (storefront.controller.js:10), and an empty <AppText> still occupies a full line
+              box plus its margin, so clearing the field in the dashboard has to remove the
+              element, not just its text. */}
+          {item.subtitle ? (
+            <AppText variant="micro" numberOfLines={1} style={styles.bannerSubtitle}>
+              {item.subtitle}
+            </AppText>
+          ) : null}
+          {item.title ? (
+            <AppText
+              variant={compact ? "h4" : "h3"}
+              tone="inverse"
+              numberOfLines={compact ? 1 : 2}
+              style={styles.bannerTitle}
+            >
+              {item.title}
+            </AppText>
+          ) : null}
         </Animated.View>
       );
 
@@ -182,7 +212,7 @@ export default function BannerCarousel({ slides, active = true }) {
         </View>
       );
     },
-    [scrollX, slideHeight, slideWidth, styles]
+    [compact, scrollX, slideHeight, slideWidth, styles]
   );
 
   return (
@@ -278,21 +308,28 @@ const getStyles = (colors) =>
       // 26 each side cost 19% of the usable width on a 320dp phone, which is where the Bangla
       // strings wrap worst. 20 matches the screen gutter used everywhere else.
       paddingHorizontal: spacing.xl,
-      // Sits lower than it did. The floor is not arbitrary: the pagination dots are absolutely
-      // positioned 12 from the slide bottom and are 18 tall, so they occupy 12–30. This
-      // padding plus the title's own marginBottom keeps the text clear of that band — drop
-      // either further and a long title runs under the dots.
-      paddingBottom: spacing.x4,
+      // The floor is the pagination dots: 6px tall, 12 from the slide bottom, so they occupy
+      // 12–18. This padding plus the title's marginBottom puts the title's bottom edge at 26 —
+      // 8px clear of them in both modes and both locales. Going to spacing.xl (20) would leave
+      // Bengali descenders 4px off the dots; this is as low as the block can seat.
+      paddingBottom: spacing.xxl,
     },
     bannerSubtitle: {
       color: SUBTITLE_ON_IMAGE,
-      marginBottom: spacing.xs,
+      // Overridden because the variants underneath are anything but light: `micro` (compact
+      // mode) is 700 in the type scale — BOLDER than the 600 title above it — and `caption`
+      // is 500. A kicker line has to sit visually beneath its heading, so the weight is
+      // pinned here regardless of which variant the breakpoint picks.
+      fontWeight: "400",
+      // Tightened so the subtitle reads as the title's kicker, not a separate paragraph — the
+      // pair covers less of the photograph as one unit.
+      marginBottom: spacing.xs - 2,
       // Loosened because the caption is now small and faint; tight tracking at 12px over a
       // photograph reads as noise.
       letterSpacing: 0.3,
     },
     bannerIcon: {
-      marginBottom: spacing.xs + 2,
+      marginBottom: spacing.xs,
     },
     bannerTitle: {
       // 600 rather than the h3 default of 700. The softening is done with weight and size, not
@@ -300,7 +337,7 @@ const getStyles = (colors) =>
       // faint for a 20px title sitting over a photograph. Adding a token for one banner would
       // be worse than not having one.
       fontWeight: "600",
-      marginBottom: spacing.xs,
+      marginBottom: spacing.xs - 2,
     },
     arrowButton: {
       position: "absolute",
